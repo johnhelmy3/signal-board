@@ -312,17 +312,6 @@
     flex:none;
     flex-wrap:wrap;
   }
-  .assignee{
-    font-size:0.76rem;
-    width:84px;
-    padding:5px 8px;
-  }
-  .assignee:not(:placeholder-shown){
-    background:var(--accent-soft);
-    color:var(--accent-text);
-    border-color:var(--accent-soft);
-    font-weight:500;
-  }
   .status-pill{
     position:relative;
   }
@@ -343,9 +332,7 @@
   .status-btn.blocked{ background:var(--status-blocked-soft); color:var(--status-blocked); }
   .status-btn.done{ background:var(--status-done-soft); color:var(--status-done); }
   .status-menu{
-    position:absolute;
-    right:0;
-    top:calc(100% + 4px);
+    position:fixed;
     background:var(--surface);
     border:1px solid var(--border);
     border-radius:8px;
@@ -354,7 +341,7 @@
     display:flex;
     flex-direction:column;
     gap:2px;
-    z-index:5;
+    z-index:100;
     min-width:130px;
   }
   .status-menu[hidden]{ display:none; }
@@ -373,6 +360,63 @@
     gap:7px;
   }
   .status-menu button:hover{ background:var(--surface-2); }
+  select.assignee{
+    font-size:0.76rem;
+    max-width:110px;
+    padding:5px 6px;
+    font-family:inherit;
+    border:1px solid var(--border);
+    border-radius:6px;
+    background:var(--surface);
+    color:var(--text);
+  }
+  select.assignee.is-set{
+    background:var(--accent-soft);
+    color:var(--accent-text);
+    border-color:var(--accent-soft);
+    font-weight:500;
+  }
+  .team-panel{
+    display:flex;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:6px;
+    margin:-4px 0 14px;
+  }
+  .team-label{
+    font-size:0.72rem;
+    color:var(--text-muted);
+    margin-right:2px;
+  }
+  .team-chip{
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    font-size:0.74rem;
+    background:var(--surface-2);
+    border:1px solid var(--border);
+    border-radius:999px;
+    padding:3px 6px 3px 10px;
+  }
+  .team-chip button{
+    background:none;
+    border:none;
+    cursor:pointer;
+    color:var(--text-muted);
+    font-size:0.7rem;
+    line-height:1;
+    padding:2px;
+  }
+  .team-chip button:hover{ color:var(--status-blocked); }
+  #add-assignee-form{
+    display:flex;
+    gap:6px;
+  }
+  #add-assignee-form input{
+    font-size:0.76rem;
+    padding:5px 8px;
+    width:120px;
+  }
   input[type="date"].due{
     font-size:0.72rem;
     padding:3px 6px;
@@ -431,10 +475,19 @@
   <form class="add-task" id="add-form">
     <input type="text" id="new-title" placeholder="Add a task…" autocomplete="off" required>
     <select id="new-area"></select>
-    <input type="text" id="new-assignee" placeholder="Assignee (optional)" autocomplete="off">
+    <select id="new-assignee"></select>
     <input type="date" id="new-due">
     <button type="submit" class="btn">Add</button>
   </form>
+
+  <div class="team-panel">
+    <span class="team-label">Team:</span>
+    <div id="team-chips"></div>
+    <form id="add-assignee-form">
+      <input type="text" id="new-assignee-name" placeholder="Add teammate…" autocomplete="off">
+      <button type="submit" class="btn-ghost">+ Add</button>
+    </form>
+  </div>
 
   <div class="toolbar">
     <form id="add-area-form" class="add-area">
@@ -445,6 +498,8 @@
   </div>
 
   <div id="board"></div>
+
+  <div class="status-menu" id="status-overlay" hidden></div>
 
   <footer class="foot">Kept in sync automatically as you edit.</footer>
 </div>
@@ -458,6 +513,7 @@
     {"id":"projects","name":"Projects"},
     {"id":"personal","name":"Personal"}
   ],
+  "assignees": ["Me"],
   "tasks": [
     {"id":"t1","title":"Finish cvmDB_V4 clone — add wallet_ocs BIGINT DEFAULT NULL to Grants_v2","area":"projects","status":"progress","due":"","assignee":"","notes":"Project: CVM Database","seeded":true},
     {"id":"t2","title":"Resolve UTF-8 BOM issue in cvm_daily_load.sh replace-mode sanity check","area":"projects","status":"done","due":"","assignee":"","notes":"Project: CVM Database","seeded":true},
@@ -484,11 +540,14 @@
   var openMenuId = null;
 
   function loadState(){
+    var s = null;
     try {
       var saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) return JSON.parse(saved);
+      if (saved) s = JSON.parse(saved);
     } catch (e) { /* corrupt or unavailable, fall back to seed */ }
-    return JSON.parse(document.getElementById('state-data').textContent);
+    if (!s) s = JSON.parse(document.getElementById('state-data').textContent);
+    if (!s.assignees) s.assignees = [];
+    return s;
   }
 
   function uid(prefix){ return (prefix||'t') + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
@@ -517,6 +576,18 @@
     areaSel.innerHTML = state.areas.map(function(a){ return '<option value="'+a.id+'">'+escapeHtml(a.name)+'</option>'; }).join('');
     if (state.areas.some(function(a){ return a.id === prevArea; })) areaSel.value = prevArea;
 
+    var assigneeSel = document.getElementById('new-assignee');
+    var prevAssignee = assigneeSel.value;
+    assigneeSel.innerHTML = '<option value="">Assignee (optional)</option>' +
+      state.assignees.map(function(a){ return '<option value="'+escapeHtml(a)+'">'+escapeHtml(a)+'</option>'; }).join('');
+    if (state.assignees.indexOf(prevAssignee) !== -1) assigneeSel.value = prevAssignee;
+
+    document.getElementById('team-chips').innerHTML = state.assignees.length ?
+      state.assignees.map(function(a){
+        return '<span class="team-chip">'+escapeHtml(a)+'<button type="button" data-action="remove-assignee" data-name="'+escapeHtml(a)+'" aria-label="Remove '+escapeHtml(a)+'">✕</button></span>';
+      }).join('') :
+      '<span class="team-label" style="margin:0">No teammates added yet</span>';
+
     var counts = {backlog:0, progress:0, blocked:0, done:0};
     state.tasks.forEach(function(t){ counts[t.status] = (counts[t.status]||0)+1; });
     document.getElementById('stats').innerHTML = STATUSES.map(function(s){
@@ -541,9 +612,10 @@
 
   function rowHtml(t){
     var s = statusInfo(t.status);
-    var menu = STATUSES.map(function(opt){
-      return '<button type="button" data-action="set-status" data-id="'+t.id+'" data-status="'+opt.id+'"><span class="dot '+opt.id+'"></span>'+opt.label+'</button>';
-    }).join('');
+    var assigneeOptions = '<option value="">Unassigned</option>' +
+      state.assignees.map(function(a){
+        return '<option value="'+escapeHtml(a)+'" '+(t.assignee===a?'selected':'')+'>'+escapeHtml(a)+'</option>';
+      }).join('');
     return '<li class="task-row '+(t.status==='done'?'done':'')+'" data-id="'+t.id+'">' +
       '<input type="checkbox" class="task-check" data-action="toggle-done" data-id="'+t.id+'" '+(t.status==='done'?'checked':'')+'>' +
       '<div class="task-main">' +
@@ -552,11 +624,10 @@
       '</div>' +
       '<div class="task-meta">' +
         (t.seeded ? '<span class="source-tag" title="Seeded from earlier project notes — verify">from notes</span>' : '') +
-        '<input type="text" class="assignee" data-action="set-assignee" data-id="'+t.id+'" placeholder="Me" value="'+escapeHtml(t.assignee||'')+'">' +
+        '<select class="assignee '+(t.assignee?'is-set':'')+'" data-action="set-assignee" data-id="'+t.id+'">'+assigneeOptions+'</select>' +
         '<input type="date" class="due mono" data-action="set-due" data-id="'+t.id+'" value="'+(t.due||'')+'">' +
         '<div class="status-pill">' +
           '<button type="button" class="status-btn '+s.id+'" data-action="toggle-menu" data-id="'+t.id+'"><span class="dot '+s.id+'"></span>'+s.label+'</button>' +
-          '<div class="status-menu" '+(openMenuId===t.id?'':'hidden')+'>'+menu+'</div>' +
         '</div>' +
         '<button type="button" class="del-btn" data-action="delete" data-id="'+t.id+'" aria-label="Delete task">✕</button>' +
       '</div>' +
@@ -616,10 +687,30 @@
     if (btn) document.getElementById('seed-banner').setAttribute('hidden','');
   });
 
+  function closeStatusMenu(){
+    if (!openMenuId) return;
+    openMenuId = null;
+    document.getElementById('status-overlay').setAttribute('hidden','');
+  }
+
+  function openStatusMenu(id, btn){
+    openMenuId = id;
+    var overlay = document.getElementById('status-overlay');
+    overlay.innerHTML = STATUSES.map(function(opt){
+      return '<button type="button" data-action="set-status" data-id="'+id+'" data-status="'+opt.id+'"><span class="dot '+opt.id+'"></span>'+opt.label+'</button>';
+    }).join('');
+    overlay.removeAttribute('hidden');
+    var r = btn.getBoundingClientRect();
+    var menuWidth = overlay.offsetWidth || 130;
+    var left = Math.min(r.left, window.innerWidth - menuWidth - 8);
+    overlay.style.top = (r.bottom + 4) + 'px';
+    overlay.style.left = Math.max(8, left) + 'px';
+  }
+
   document.getElementById('board').addEventListener('click', function(e){
     var el = e.target.closest('[data-action]');
     if (!el){
-      if (openMenuId){ openMenuId = null; render(); }
+      closeStatusMenu();
       return;
     }
     var action = el.getAttribute('data-action');
@@ -631,15 +722,7 @@
       return;
     }
     if (action === 'toggle-menu'){
-      openMenuId = (openMenuId === id) ? null : id;
-      render();
-      return;
-    }
-    if (action === 'set-status'){
-      var t = findTask(id);
-      if (t){ t.status = el.getAttribute('data-status'); }
-      openMenuId = null;
-      persist();
+      if (openMenuId === id){ closeStatusMenu(); } else { openStatusMenu(id, el); }
       return;
     }
     if (action === 'delete'){
@@ -648,6 +731,24 @@
       return;
     }
   });
+
+  document.getElementById('status-overlay').addEventListener('click', function(e){
+    var el = e.target.closest('[data-action="set-status"]');
+    if (!el) return;
+    var t = findTask(el.getAttribute('data-id'));
+    if (t){ t.status = el.getAttribute('data-status'); }
+    closeStatusMenu();
+    persist();
+  });
+
+  document.addEventListener('click', function(e){
+    if (!openMenuId) return;
+    if (e.target.closest('#status-overlay') || e.target.closest('[data-action="toggle-menu"]')) return;
+    closeStatusMenu();
+  });
+
+  window.addEventListener('scroll', closeStatusMenu, true);
+  window.addEventListener('resize', closeStatusMenu);
 
   document.getElementById('board').addEventListener('change', function(e){
     var el = e.target.closest('[data-action]');
@@ -664,9 +765,28 @@
     }
     if (el.getAttribute('data-action') === 'set-assignee'){
       var t3 = findTask(el.getAttribute('data-id'));
-      if (t3){ t3.assignee = el.value.trim(); }
+      if (t3){ t3.assignee = el.value; }
       persist();
     }
+  });
+
+  document.getElementById('add-assignee-form').addEventListener('submit', function(e){
+    e.preventDefault();
+    var input = document.getElementById('new-assignee-name');
+    var name = input.value.trim();
+    if (!name) return;
+    if (state.assignees.indexOf(name) === -1) state.assignees.push(name);
+    input.value = '';
+    persist();
+  });
+
+  document.getElementById('team-chips').addEventListener('click', function(e){
+    var el = e.target.closest('[data-action="remove-assignee"]');
+    if (!el) return;
+    var name = el.getAttribute('data-name');
+    state.assignees = state.assignees.filter(function(a){ return a !== name; });
+    state.tasks.forEach(function(t){ if (t.assignee === name) t.assignee = ''; });
+    persist();
   });
 
   document.getElementById('board').addEventListener('blur', function(e){
