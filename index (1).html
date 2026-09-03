@@ -1,0 +1,1004 @@
+<title>Signal Board</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#2C5F8A">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Signal Board">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F2F5F5;
+    --surface:#FFFFFF;
+    --surface-2:#E7ECEC;
+    --border:#D7DFDE;
+    --text:#152322;
+    --text-muted:#5C716E;
+    --accent:#2C5F8A;
+    --accent-soft:#DDE9F2;
+    --accent-text:#1F4A6B;
+    --status-done:#2F8F5B;
+    --status-done-soft:#DFF2E6;
+    --status-progress:#B4790F;
+    --status-progress-soft:#F7E9D0;
+    --status-blocked:#C4433B;
+    --status-blocked-soft:#F8DEDC;
+    --status-backlog:#5C716E;
+    --status-backlog-soft:#E7ECEC;
+    --shadow: 0 1px 2px rgba(21,35,34,0.06), 0 1px 1px rgba(21,35,34,0.04);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0D1615;
+      --surface:#131F1E;
+      --surface-2:#1B2928;
+      --border:#2A3B39;
+      --text:#E7EEEC;
+      --text-muted:#8FA39F;
+      --accent:#6FA8D6;
+      --accent-soft:#1B3244;
+      --accent-text:#9CC5E8;
+      --status-done:#57B888;
+      --status-done-soft:#173A2A;
+      --status-progress:#E0A83B;
+      --status-progress-soft:#3A2E12;
+      --status-blocked:#E2645C;
+      --status-blocked-soft:#3B1D1B;
+      --status-backlog:#93A6A2;
+      --status-backlog-soft:#20302E;
+      --shadow: 0 1px 2px rgba(0,0,0,0.35);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0D1615;
+    --surface:#131F1E;
+    --surface-2:#1B2928;
+    --border:#2A3B39;
+    --text:#E7EEEC;
+    --text-muted:#8FA39F;
+    --accent:#6FA8D6;
+    --accent-soft:#1B3244;
+    --accent-text:#9CC5E8;
+    --status-done:#57B888;
+    --status-done-soft:#173A2A;
+    --status-progress:#E0A83B;
+    --status-progress-soft:#3A2E12;
+    --status-blocked:#E2645C;
+    --status-blocked-soft:#3B1D1B;
+    --status-backlog:#93A6A2;
+    --status-backlog-soft:#20302E;
+    --shadow: 0 1px 2px rgba(0,0,0,0.35);
+    color-scheme: dark;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'IBM Plex Sans', -apple-system, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{ font-family:'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace; font-variant-numeric: tabular-nums; }
+  .wrap{
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 28px 20px 80px;
+  }
+  header.top{
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    gap:12px;
+    margin-bottom:6px;
+    flex-wrap:wrap;
+  }
+  h1{
+    font-size: 1.5rem;
+    font-weight:700;
+    letter-spacing:-0.01em;
+    margin:0;
+    text-wrap:balance;
+  }
+  .subtitle{
+    color:var(--text-muted);
+    font-size:0.85rem;
+    margin:2px 0 20px;
+  }
+  .stats{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    margin-bottom:18px;
+  }
+  .stat{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    padding:6px 10px;
+    border-radius:8px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    font-size:0.78rem;
+    color:var(--text-muted);
+  }
+  .stat b{ color:var(--text); font-family:'IBM Plex Mono', monospace; font-weight:600; }
+  .dot{ width:8px; height:8px; border-radius:50%; flex:none; }
+  .dot.backlog{ background:var(--status-backlog); }
+  .dot.progress{ background:var(--status-progress); }
+  .dot.blocked{ background:var(--status-blocked); }
+  .dot.done{ background:var(--status-done); }
+
+  .note-banner{
+    display:flex;
+    gap:10px;
+    align-items:flex-start;
+    background:var(--accent-soft);
+    color:var(--accent-text);
+    border:1px solid var(--accent-soft);
+    border-radius:10px;
+    padding:10px 12px;
+    font-size:0.82rem;
+    line-height:1.45;
+    margin-bottom:22px;
+  }
+  .note-banner button{
+    margin-left:auto;
+    flex:none;
+    background:none;
+    border:none;
+    color:inherit;
+    opacity:0.6;
+    cursor:pointer;
+    font-size:0.95rem;
+    line-height:1;
+    padding:2px;
+  }
+  .note-banner button:hover{ opacity:1; }
+  .note-banner[hidden]{ display:none; }
+
+  form.add-task{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:10px;
+    margin-bottom:16px;
+    box-shadow: var(--shadow);
+  }
+  form.add-task input[type="text"]#new-title{
+    flex: 1 1 220px;
+  }
+  form.add-task input[type="text"]#new-assignee{
+    flex: 0 1 150px;
+  }
+  input[type="text"], input[type="date"], select{
+    font-family:inherit;
+    font-size:0.88rem;
+    color:var(--text);
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:6px;
+    padding:8px 10px;
+  }
+  input[type="text"]:focus, input[type="date"]:focus, select:focus, button:focus-visible, [contenteditable]:focus{
+    outline:2px solid var(--accent);
+    outline-offset:1px;
+  }
+  select{ flex: 0 0 auto; }
+  .btn{
+    font-family:inherit;
+    font-size:0.85rem;
+    font-weight:600;
+    border:none;
+    border-radius:6px;
+    padding:8px 14px;
+    background:var(--accent);
+    color:var(--surface);
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .btn:hover{ filter:brightness(1.08); }
+
+  .toolbar{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    flex-wrap:wrap;
+    margin: 0 0 18px;
+    font-size:0.8rem;
+    color:var(--text-muted);
+  }
+  .toolbar label{ display:flex; align-items:center; gap:6px; cursor:pointer; user-select:none; }
+  form.add-area{
+    display:flex;
+    gap:6px;
+  }
+  form.add-area input[type="text"]{
+    font-size:0.8rem;
+    padding:6px 9px;
+    width:160px;
+  }
+  .btn-ghost{
+    font-family:inherit;
+    font-size:0.78rem;
+    font-weight:600;
+    border:1px dashed var(--border);
+    border-radius:6px;
+    padding:6px 10px;
+    background:transparent;
+    color:var(--accent-text);
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .btn-ghost:hover{ background:var(--accent-soft); border-style:solid; }
+
+  section.area{
+    margin-bottom:16px;
+    border:1px solid var(--border);
+    border-radius:10px;
+    background:var(--surface);
+    overflow:hidden;
+    box-shadow: var(--shadow);
+  }
+  .area-head{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:12px 14px;
+    cursor:pointer;
+    background:var(--surface-2);
+  }
+  .area-head .chev{
+    font-size:0.7rem;
+    color:var(--text-muted);
+    transition: transform 0.15s ease;
+    flex:none;
+  }
+  section.area.collapsed .chev{ transform: rotate(-90deg); }
+  .area-head h2{
+    font-size:0.95rem;
+    font-weight:600;
+    margin:0;
+    flex:1;
+  }
+  .area-count{
+    font-size:0.75rem;
+    color:var(--text-muted);
+    font-family:'IBM Plex Mono', monospace;
+  }
+  .task-list{ list-style:none; margin:0; padding:0; }
+  .task-item{ margin:0; }
+  section.area.collapsed .task-list{ display:none; }
+  .task-row{
+    display:flex;
+    align-items:flex-start;
+    gap:10px;
+    padding:10px 14px;
+    border-top:1px solid var(--border);
+    flex-wrap:wrap;
+  }
+  .sub-toggle{
+    font-family:inherit;
+    font-size:0.72rem;
+    color:var(--text-muted);
+    background:var(--surface-2);
+    border:1px solid var(--border);
+    border-radius:999px;
+    padding:4px 9px;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .sub-toggle:hover{ color:var(--text); }
+  .sub-toggle.has-subs{ color:var(--accent-text); background:var(--accent-soft); border-color:var(--accent-soft); }
+  .subtask-block{
+    padding:6px 14px 12px 42px;
+    border-top:1px dashed var(--border);
+    background:var(--surface-2);
+  }
+  .subtask-list{ list-style:none; margin:0 0 6px; padding:0; }
+  .subtask-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:4px 0;
+  }
+  .subtask-row input[type="checkbox"]{
+    width:14px; height:14px;
+    accent-color: var(--status-done);
+    flex:none;
+    cursor:pointer;
+  }
+  .subtask-title{
+    flex:1;
+    font-size:0.8rem;
+    line-height:1.4;
+    word-break: break-word;
+  }
+  .subtask-title:focus{ background: var(--surface); border-radius:4px; }
+  .subtask-title.done{ color:var(--text-muted); text-decoration: line-through; text-decoration-color: var(--border); }
+  .del-btn-sm{
+    background:none;
+    border:none;
+    color:var(--text-muted);
+    cursor:pointer;
+    font-size:0.68rem;
+    padding:2px 4px;
+    flex:none;
+  }
+  .del-btn-sm:hover{ color:var(--status-blocked); }
+  .add-subtask-form{
+    display:flex;
+    gap:6px;
+  }
+  .add-subtask-form input{
+    font-size:0.78rem;
+    padding:5px 8px;
+    flex:1;
+    max-width:220px;
+  }
+  .btn-sm{ font-size:0.74rem; padding:5px 9px; }
+  .task-row.done .task-title{ color:var(--text-muted); text-decoration: line-through; text-decoration-color: var(--border); }
+  .task-check{
+    margin-top:3px;
+    width:16px; height:16px;
+    accent-color: var(--status-done);
+    flex:none;
+    cursor:pointer;
+  }
+  .task-main{ flex:1 1 200px; min-width:0; }
+  .task-title{
+    font-size:0.9rem;
+    line-height:1.4;
+    word-break: break-word;
+  }
+  .task-title:focus{ background: var(--surface-2); border-radius:4px; }
+  .task-notes{
+    font-size:0.76rem;
+    color:var(--text-muted);
+    margin-top:2px;
+  }
+  .task-meta{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    flex:none;
+    flex-wrap:wrap;
+  }
+  .status-pill{
+    position:relative;
+  }
+  .status-btn{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:0.72rem;
+    font-weight:600;
+    border:1px solid transparent;
+    border-radius:999px;
+    padding:4px 10px 4px 8px;
+    display:flex;
+    align-items:center;
+    gap:5px;
+    cursor:pointer;
+  }
+  .status-btn.backlog{ background:var(--status-backlog-soft); color:var(--status-backlog); }
+  .status-btn.progress{ background:var(--status-progress-soft); color:var(--status-progress); }
+  .status-btn.blocked{ background:var(--status-blocked-soft); color:var(--status-blocked); }
+  .status-btn.done{ background:var(--status-done-soft); color:var(--status-done); }
+  .status-menu{
+    position:fixed;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:8px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+    padding:4px;
+    display:flex;
+    flex-direction:column;
+    gap:2px;
+    z-index:100;
+    min-width:130px;
+  }
+  .status-menu[hidden]{ display:none; }
+  .status-menu button{
+    text-align:left;
+    background:none;
+    border:none;
+    font-family:inherit;
+    font-size:0.78rem;
+    padding:6px 8px;
+    border-radius:5px;
+    cursor:pointer;
+    color:var(--text);
+    display:flex;
+    align-items:center;
+    gap:7px;
+  }
+  .status-menu button:hover{ background:var(--surface-2); }
+  select.assignee{
+    font-size:0.76rem;
+    max-width:110px;
+    padding:5px 6px;
+    font-family:inherit;
+    border:1px solid var(--border);
+    border-radius:6px;
+    background:var(--surface);
+    color:var(--text);
+  }
+  select.assignee.is-set{
+    background:var(--accent-soft);
+    color:var(--accent-text);
+    border-color:var(--accent-soft);
+    font-weight:500;
+  }
+  .team-panel{
+    display:flex;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:6px;
+    margin:-4px 0 14px;
+  }
+  .team-label{
+    font-size:0.72rem;
+    color:var(--text-muted);
+    margin-right:2px;
+  }
+  .team-chip{
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    font-size:0.74rem;
+    background:var(--surface-2);
+    border:1px solid var(--border);
+    border-radius:999px;
+    padding:3px 6px 3px 10px;
+  }
+  .team-chip button{
+    background:none;
+    border:none;
+    cursor:pointer;
+    color:var(--text-muted);
+    font-size:0.7rem;
+    line-height:1;
+    padding:2px;
+  }
+  .team-chip button:hover{ color:var(--status-blocked); }
+  #add-assignee-form{
+    display:flex;
+    gap:6px;
+  }
+  #add-assignee-form input{
+    font-size:0.76rem;
+    padding:5px 8px;
+    width:120px;
+  }
+  input[type="date"].due{
+    font-size:0.72rem;
+    padding:3px 6px;
+    border-radius:6px;
+    color-scheme: inherit;
+  }
+  .del-btn{
+    background:none;
+    border:none;
+    color:var(--text-muted);
+    cursor:pointer;
+    font-size:0.85rem;
+    padding:2px 4px;
+    border-radius:4px;
+    flex:none;
+  }
+  .del-btn:hover{ color:var(--status-blocked); background:var(--status-blocked-soft); }
+  .empty-msg{
+    padding:16px 14px;
+    color:var(--text-muted);
+    font-size:0.82rem;
+  }
+  .source-tag{
+    font-size:0.68rem;
+    color:var(--text-muted);
+    border:1px solid var(--border);
+    border-radius:4px;
+    padding:1px 5px;
+    white-space:nowrap;
+  }
+  footer.foot{
+    text-align:center;
+    color:var(--text-muted);
+    font-size:0.72rem;
+    margin-top:24px;
+  }
+  @media (prefers-reduced-motion: reduce){
+    .area-head .chev{ transition:none; }
+  }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <h1>Signal Board</h1>
+    <span class="mono" style="font-size:0.78rem;color:var(--text-muted);" id="today-label"></span>
+  </header>
+  <p class="subtitle">John's running task tracker — VAS platform work and day-to-day to-dos.</p>
+
+  <div class="note-banner" id="seed-banner">
+    <span>📌 Items tagged "from notes" were carried over from earlier project notes, not confirmed today — check they're still accurate before relying on them.</span>
+    <button type="button" data-action="dismiss-banner" aria-label="Dismiss">✕</button>
+  </div>
+
+  <div class="stats" id="stats"></div>
+
+  <form class="add-task" id="add-form">
+    <input type="text" id="new-title" placeholder="Add a task…" autocomplete="off" required>
+    <select id="new-area"></select>
+    <select id="new-assignee"></select>
+    <input type="date" id="new-due">
+    <button type="submit" class="btn">Add</button>
+  </form>
+
+  <div class="team-panel">
+    <span class="team-label">Team:</span>
+    <div id="team-chips"></div>
+    <form id="add-assignee-form">
+      <input type="text" id="new-assignee-name" placeholder="Add teammate…" autocomplete="off">
+      <button type="submit" class="btn-ghost">+ Add</button>
+    </form>
+  </div>
+
+  <div class="toolbar">
+    <form id="add-area-form" class="add-area">
+      <input type="text" id="new-area-name" placeholder="New category…" autocomplete="off">
+      <button type="submit" class="btn-ghost">+ Add category</button>
+    </form>
+    <label><input type="checkbox" id="toggle-done"> Show completed</label>
+    <button type="button" class="btn-ghost" id="export-btn">⬇ Backup</button>
+    <button type="button" class="btn-ghost" id="import-btn">⬆ Restore</button>
+    <input type="file" id="import-file" accept="application/json" hidden>
+  </div>
+
+  <div id="board"></div>
+
+  <div class="status-menu" id="status-overlay" hidden></div>
+
+  <footer class="foot">Kept in sync automatically as you edit.</footer>
+</div>
+
+<script id="state-data" type="application/json">
+{
+  "areas": [
+    {"id":"marketing-pds","name":"Marketing PDs"},
+    {"id":"daily-ops","name":"Daily Operations"},
+    {"id":"general","name":"General"},
+    {"id":"projects","name":"Projects"},
+    {"id":"personal","name":"Personal"}
+  ],
+  "assignees": ["Me"],
+  "tasks": [
+    {"id":"t1","title":"Finish cvmDB_V4 clone — add wallet_ocs BIGINT DEFAULT NULL to Grants_v2","area":"projects","status":"progress","due":"","assignee":"","notes":"Project: CVM Database","seeded":true},
+    {"id":"t2","title":"Resolve UTF-8 BOM issue in cvm_daily_load.sh replace-mode sanity check","area":"projects","status":"done","due":"","assignee":"","notes":"Project: CVM Database","seeded":true},
+    {"id":"t3","title":"Finish AXON rebuild — Python/FastAPI + MongoDB + PWA, multi-user","area":"personal","status":"progress","due":"","assignee":"","notes":"Project: AXON","seeded":true},
+    {"id":"t4","title":"stats1 MySQL memory leak","area":"daily-ops","status":"backlog","due":"","assignee":"","notes":"Project: VAS Infrastructure Health — remaining open item from the July 31 fleet health investigation.","seeded":true},
+    {"id":"t5","title":"sgw3 CPU issue","area":"daily-ops","status":"backlog","due":"","assignee":"","notes":"Project: VAS Infrastructure Health — remaining open item from the July 31 fleet health investigation.","seeded":true},
+    {"id":"t6","title":"nb2 uptime anomaly","area":"daily-ops","status":"done","due":"","assignee":"","notes":"Project: VAS Infrastructure Health — remaining open item from the July 31 fleet health investigation.","seeded":true},
+    {"id":"tmtij3q4bh35fr","title":"myafricell app catalogue update","area":"general","status":"backlog","due":"2026-09-01","assignee":"","notes":"","seeded":false}
+  ]
+}
+</script>
+
+<script>
+(function(){
+  var STATUSES = [
+    {id:"backlog", label:"Backlog"},
+    {id:"progress", label:"In progress"},
+    {id:"blocked", label:"Blocked"},
+    {id:"done", label:"Done"}
+  ];
+  var STORAGE_KEY = 'signal-board-state-v1';
+  var state = loadState();
+  var showDone = false;
+  var openMenuId = null;
+  var expandedSubtasks = {};
+
+  function loadState(){
+    var s = null;
+    try {
+      var saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) s = JSON.parse(saved);
+    } catch (e) { /* corrupt or unavailable, fall back to seed */ }
+    if (!s) s = JSON.parse(document.getElementById('state-data').textContent);
+    if (!s.assignees) s.assignees = [];
+    return s;
+  }
+
+  function uid(prefix){ return (prefix||'t') + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+  function escapeHtml(s){
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+    });
+  }
+  function slugify(name){
+    var base = name.toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'');
+    if (!base) base = 'category';
+    var id = base, n = 2;
+    while (state.areas.some(function(a){ return a.id === id; })) { id = base + '-' + n; n++; }
+    return id;
+  }
+  function statusInfo(id){
+    for (var i=0;i<STATUSES.length;i++){ if (STATUSES[i].id===id) return STATUSES[i]; }
+    return STATUSES[0];
+  }
+
+  function render(){
+    document.getElementById('today-label').textContent = new Date().toLocaleDateString(undefined,{weekday:'long', month:'long', day:'numeric'});
+
+    var areaSel = document.getElementById('new-area');
+    var prevArea = areaSel.value;
+    areaSel.innerHTML = state.areas.map(function(a){ return '<option value="'+a.id+'">'+escapeHtml(a.name)+'</option>'; }).join('');
+    if (state.areas.some(function(a){ return a.id === prevArea; })) areaSel.value = prevArea;
+
+    var assigneeSel = document.getElementById('new-assignee');
+    var prevAssignee = assigneeSel.value;
+    assigneeSel.innerHTML = '<option value="">Assignee (optional)</option>' +
+      state.assignees.map(function(a){ return '<option value="'+escapeHtml(a)+'">'+escapeHtml(a)+'</option>'; }).join('');
+    if (state.assignees.indexOf(prevAssignee) !== -1) assigneeSel.value = prevAssignee;
+
+    document.getElementById('team-chips').innerHTML = state.assignees.length ?
+      state.assignees.map(function(a){
+        return '<span class="team-chip">'+escapeHtml(a)+'<button type="button" data-action="remove-assignee" data-name="'+escapeHtml(a)+'" aria-label="Remove '+escapeHtml(a)+'">✕</button></span>';
+      }).join('') :
+      '<span class="team-label" style="margin:0">No teammates added yet</span>';
+
+    var counts = {backlog:0, progress:0, blocked:0, done:0};
+    state.tasks.forEach(function(t){ counts[t.status] = (counts[t.status]||0)+1; });
+    document.getElementById('stats').innerHTML = STATUSES.map(function(s){
+      return '<span class="stat"><span class="dot '+s.id+'"></span>'+s.label+' <b>'+(counts[s.id]||0)+'</b></span>';
+    }).join('');
+
+    var board = document.getElementById('board');
+    board.innerHTML = state.areas.map(function(area){
+      var tasks = state.tasks.filter(function(t){ return t.area===area.id && (showDone || t.status!=='done'); });
+      var totalOpen = state.tasks.filter(function(t){ return t.area===area.id && t.status!=='done'; }).length;
+      var rows = tasks.length ? tasks.map(rowHtml).join('') :
+        '<li class="empty-msg">Nothing here'+(totalOpen===0 && !showDone ? '' : ' matching the current filter')+'.</li>';
+      return '<section class="area" data-area="'+area.id+'">' +
+        '<div class="area-head" data-action="toggle-area" data-area="'+area.id+'">' +
+          '<span class="chev">▾</span><h2>'+escapeHtml(area.name)+'</h2>' +
+          '<span class="area-count mono">'+totalOpen+' open</span>' +
+        '</div>' +
+        '<ul class="task-list">'+rows+'</ul>' +
+      '</section>';
+    }).join('');
+  }
+
+  function rowHtml(t){
+    var s = statusInfo(t.status);
+    var assigneeOptions = '<option value="">Unassigned</option>' +
+      state.assignees.map(function(a){
+        return '<option value="'+escapeHtml(a)+'" '+(t.assignee===a?'selected':'')+'>'+escapeHtml(a)+'</option>';
+      }).join('');
+    var subs = t.subtasks || [];
+    var subDone = subs.filter(function(s2){ return s2.done; }).length;
+    var subLabel = subs.length ? ('☑ '+subDone+'/'+subs.length) : '+ Subtasks';
+    return '<li class="task-item" data-id="'+t.id+'">' +
+      '<div class="task-row '+(t.status==='done'?'done':'')+'">' +
+      '<input type="checkbox" class="task-check" data-action="toggle-done" data-id="'+t.id+'" '+(t.status==='done'?'checked':'')+'>' +
+      '<div class="task-main">' +
+        '<div class="task-title" contenteditable="true" data-action="edit-title" data-id="'+t.id+'">'+escapeHtml(t.title)+'</div>' +
+        (t.notes ? '<div class="task-notes">'+escapeHtml(t.notes)+'</div>' : '') +
+      '</div>' +
+      '<div class="task-meta">' +
+        (t.seeded ? '<span class="source-tag" title="Seeded from earlier project notes — verify">from notes</span>' : '') +
+        '<button type="button" class="sub-toggle '+(subs.length?'has-subs':'')+'" data-action="toggle-subtasks" data-id="'+t.id+'">'+subLabel+'</button>' +
+        '<select class="assignee '+(t.assignee?'is-set':'')+'" data-action="set-assignee" data-id="'+t.id+'">'+assigneeOptions+'</select>' +
+        '<input type="date" class="due mono" data-action="set-due" data-id="'+t.id+'" value="'+(t.due||'')+'">' +
+        '<div class="status-pill">' +
+          '<button type="button" class="status-btn '+s.id+'" data-action="toggle-menu" data-id="'+t.id+'"><span class="dot '+s.id+'"></span>'+s.label+'</button>' +
+        '</div>' +
+        '<button type="button" class="del-btn" data-action="delete" data-id="'+t.id+'" aria-label="Delete task">✕</button>' +
+      '</div>' +
+      '</div>' +
+      subtaskBlockHtml(t, subs) +
+    '</li>';
+  }
+
+  function subtaskBlockHtml(t, subs){
+    if (!expandedSubtasks[t.id]) return '';
+    var items = subs.map(function(s2){
+      return '<li class="subtask-row" data-subid="'+s2.id+'">' +
+        '<input type="checkbox" data-action="toggle-subtask" data-task="'+t.id+'" data-sub="'+s2.id+'" '+(s2.done?'checked':'')+'>' +
+        '<span class="subtask-title '+(s2.done?'done':'')+'" contenteditable="true" data-action="edit-subtask" data-task="'+t.id+'" data-sub="'+s2.id+'">'+escapeHtml(s2.title)+'</span>' +
+        '<button type="button" class="del-btn-sm" data-action="delete-subtask" data-task="'+t.id+'" data-sub="'+s2.id+'" aria-label="Delete subtask">✕</button>' +
+      '</li>';
+    }).join('');
+    return '<div class="subtask-block">' +
+        (items ? '<ul class="subtask-list">'+items+'</ul>' : '') +
+        '<form class="add-subtask-form" data-task="'+t.id+'">' +
+          '<input type="text" class="add-subtask-input" placeholder="Add subtask…" autocomplete="off">' +
+          '<button type="submit" class="btn-ghost btn-sm">+ Add</button>' +
+        '</form>' +
+      '</div>';
+  }
+
+  function persist(){
+    render();
+    saveState();
+  }
+
+  function saveState(){
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch (e) { /* storage full or unavailable */ }
+  }
+
+  function findTask(id){
+    for (var i=0;i<state.tasks.length;i++){ if (state.tasks[i].id===id) return state.tasks[i]; }
+    return null;
+  }
+
+  document.getElementById('add-form').addEventListener('submit', function(e){
+    e.preventDefault();
+    var titleEl = document.getElementById('new-title');
+    var title = titleEl.value.trim();
+    if (!title) return;
+    var area = document.getElementById('new-area').value;
+    var due = document.getElementById('new-due').value;
+    var assignee = document.getElementById('new-assignee').value.trim();
+    state.tasks.push({id: uid('t'), title: title, area: area, status:'backlog', due: due, assignee: assignee, notes:'', seeded:false});
+    titleEl.value = '';
+    document.getElementById('new-due').value = '';
+    document.getElementById('new-assignee').value = '';
+    persist();
+  });
+
+  document.getElementById('add-area-form').addEventListener('submit', function(e){
+    e.preventDefault();
+    var input = document.getElementById('new-area-name');
+    var name = input.value.trim();
+    if (!name) return;
+    var id = slugify(name);
+    state.areas.push({id: id, name: name});
+    input.value = '';
+    persist();
+    document.getElementById('new-area').value = id;
+  });
+
+  document.getElementById('toggle-done').addEventListener('change', function(e){
+    showDone = e.target.checked;
+    render();
+  });
+
+  document.getElementById('seed-banner').addEventListener('click', function(e){
+    var btn = e.target.closest('[data-action="dismiss-banner"]');
+    if (btn) document.getElementById('seed-banner').setAttribute('hidden','');
+  });
+
+  function closeStatusMenu(){
+    if (!openMenuId) return;
+    openMenuId = null;
+    document.getElementById('status-overlay').setAttribute('hidden','');
+  }
+
+  function openStatusMenu(id, btn){
+    openMenuId = id;
+    var overlay = document.getElementById('status-overlay');
+    overlay.innerHTML = STATUSES.map(function(opt){
+      return '<button type="button" data-action="set-status" data-id="'+id+'" data-status="'+opt.id+'"><span class="dot '+opt.id+'"></span>'+opt.label+'</button>';
+    }).join('');
+    overlay.removeAttribute('hidden');
+    var r = btn.getBoundingClientRect();
+    var menuWidth = overlay.offsetWidth || 130;
+    var left = Math.min(r.left, window.innerWidth - menuWidth - 8);
+    overlay.style.top = (r.bottom + 4) + 'px';
+    overlay.style.left = Math.max(8, left) + 'px';
+  }
+
+  document.getElementById('board').addEventListener('click', function(e){
+    var el = e.target.closest('[data-action]');
+    if (!el){
+      closeStatusMenu();
+      return;
+    }
+    var action = el.getAttribute('data-action');
+    var id = el.getAttribute('data-id');
+
+    if (action === 'toggle-area'){
+      var section = document.querySelector('section.area[data-area="'+el.getAttribute('data-area')+'"]');
+      if (section) section.classList.toggle('collapsed');
+      return;
+    }
+    if (action === 'toggle-menu'){
+      if (openMenuId === id){ closeStatusMenu(); } else { openStatusMenu(id, el); }
+      return;
+    }
+    if (action === 'toggle-subtasks'){
+      expandedSubtasks[id] = !expandedSubtasks[id];
+      render();
+      return;
+    }
+    if (action === 'delete-subtask'){
+      var tsub = findTask(el.getAttribute('data-task'));
+      if (tsub){ tsub.subtasks = (tsub.subtasks||[]).filter(function(s){ return s.id !== el.getAttribute('data-sub'); }); }
+      persist();
+      return;
+    }
+    if (action === 'delete'){
+      state.tasks = state.tasks.filter(function(x){ return x.id !== id; });
+      persist();
+      return;
+    }
+  });
+
+  document.getElementById('status-overlay').addEventListener('click', function(e){
+    var el = e.target.closest('[data-action="set-status"]');
+    if (!el) return;
+    var t = findTask(el.getAttribute('data-id'));
+    if (t){ t.status = el.getAttribute('data-status'); }
+    closeStatusMenu();
+    persist();
+  });
+
+  document.addEventListener('click', function(e){
+    if (!openMenuId) return;
+    if (e.target.closest('#status-overlay') || e.target.closest('[data-action="toggle-menu"]')) return;
+    closeStatusMenu();
+  });
+
+  window.addEventListener('scroll', closeStatusMenu, true);
+  window.addEventListener('resize', closeStatusMenu);
+
+  document.getElementById('board').addEventListener('change', function(e){
+    var el = e.target.closest('[data-action]');
+    if (!el) return;
+    if (el.getAttribute('data-action') === 'toggle-done'){
+      var t = findTask(el.getAttribute('data-id'));
+      if (t){ t.status = el.checked ? 'done' : 'backlog'; }
+      persist();
+    }
+    if (el.getAttribute('data-action') === 'set-due'){
+      var t2 = findTask(el.getAttribute('data-id'));
+      if (t2){ t2.due = el.value; }
+      persist();
+    }
+    if (el.getAttribute('data-action') === 'set-assignee'){
+      var t3 = findTask(el.getAttribute('data-id'));
+      if (t3){ t3.assignee = el.value; }
+      persist();
+    }
+    if (el.getAttribute('data-action') === 'toggle-subtask'){
+      var t4 = findTask(el.getAttribute('data-task'));
+      if (t4){
+        var sub = (t4.subtasks||[]).find(function(s){ return s.id === el.getAttribute('data-sub'); });
+        if (sub) sub.done = el.checked;
+      }
+      persist();
+    }
+  });
+
+  document.getElementById('board').addEventListener('submit', function(e){
+    var form = e.target.closest('.add-subtask-form');
+    if (!form) return;
+    e.preventDefault();
+    var taskId = form.getAttribute('data-task');
+    var input = form.querySelector('.add-subtask-input');
+    var title = input.value.trim();
+    if (!title) return;
+    var t = findTask(taskId);
+    if (!t) return;
+    if (!t.subtasks) t.subtasks = [];
+    t.subtasks.push({id: uid('sub'), title: title, done: false});
+    expandedSubtasks[taskId] = true;
+    persist();
+  });
+
+  document.getElementById('add-assignee-form').addEventListener('submit', function(e){
+    e.preventDefault();
+    var input = document.getElementById('new-assignee-name');
+    var name = input.value.trim();
+    if (!name) return;
+    if (state.assignees.indexOf(name) === -1) state.assignees.push(name);
+    input.value = '';
+    persist();
+  });
+
+  document.getElementById('team-chips').addEventListener('click', function(e){
+    var el = e.target.closest('[data-action="remove-assignee"]');
+    if (!el) return;
+    var name = el.getAttribute('data-name');
+    state.assignees = state.assignees.filter(function(a){ return a !== name; });
+    state.tasks.forEach(function(t){ if (t.assignee === name) t.assignee = ''; });
+    persist();
+  });
+
+  document.getElementById('export-btn').addEventListener('click', function(){
+    var blob = new Blob([JSON.stringify(state, null, 2)], {type: 'application/json'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    var stamp = new Date().toISOString().slice(0,10);
+    a.href = url;
+    a.download = 'signal-board-backup-' + stamp + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+
+  document.getElementById('import-btn').addEventListener('click', function(){
+    document.getElementById('import-file').click();
+  });
+
+  document.getElementById('import-file').addEventListener('change', function(e){
+    var file = e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(){
+      var parsed;
+      try {
+        parsed = JSON.parse(reader.result);
+      } catch (err) {
+        alert('That file isn\'t valid backup JSON.');
+        return;
+      }
+      if (!parsed || !Array.isArray(parsed.tasks) || !Array.isArray(parsed.areas)){
+        alert('That file doesn\'t look like a Signal Board backup.');
+        return;
+      }
+      if (!confirm('This replaces your current board with the backup. Continue?')) return;
+      if (!parsed.assignees) parsed.assignees = [];
+      state = parsed;
+      persist();
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  });
+
+  document.getElementById('board').addEventListener('blur', function(e){
+    var el = e.target.closest('[data-action="edit-title"]');
+    if (!el) return;
+    var t = findTask(el.getAttribute('data-id'));
+    if (!t) return;
+    var text = el.textContent.trim();
+    if (text && text !== t.title){
+      t.title = text;
+      persist();
+    } else if (!text){
+      el.textContent = t.title;
+    }
+  }, true);
+
+  document.getElementById('board').addEventListener('blur', function(e){
+    var el = e.target.closest('[data-action="edit-subtask"]');
+    if (!el) return;
+    var t = findTask(el.getAttribute('data-task'));
+    if (!t) return;
+    var sub = (t.subtasks||[]).find(function(s){ return s.id === el.getAttribute('data-sub'); });
+    if (!sub) return;
+    var text = el.textContent.trim();
+    if (text && text !== sub.title){
+      sub.title = text;
+      persist();
+    } else if (!text){
+      el.textContent = sub.title;
+    }
+  }, true);
+
+  document.getElementById('board').addEventListener('keydown', function(e){
+    var el = e.target.closest('[data-action="edit-title"]');
+    if (el && e.key === 'Enter'){ e.preventDefault(); el.blur(); }
+    var subEl = e.target.closest('[data-action="edit-subtask"]');
+    if (subEl && e.key === 'Enter'){ e.preventDefault(); subEl.blur(); }
+  });
+
+  render();
+
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function(){
+      navigator.serviceWorker.register('sw.js').catch(function(){ /* offline support optional */ });
+    });
+  }
+})();
+</script>
