@@ -1,10 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
 <title>Signal Board</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#2C5F8A">
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" href="icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Signal Board">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -526,11 +532,6 @@
   </header>
   <p class="subtitle">John's running task tracker — VAS platform work and day-to-day to-dos.</p>
 
-  <div class="note-banner" id="seed-banner">
-    <span>📌 Items tagged "from notes" were carried over from earlier project notes, not confirmed today — check they're still accurate before relying on them.</span>
-    <button type="button" data-action="dismiss-banner" aria-label="Dismiss">✕</button>
-  </div>
-
   <div class="stats" id="stats"></div>
 
   <form class="add-task" id="add-form">
@@ -710,7 +711,7 @@
     if (!expandedSubtasks[t.id]) return '';
     var items = subs.map(function(s2){
       return '<li class="subtask-row" data-subid="'+s2.id+'">' +
-        '<input type="checkbox" data-action="toggle-subtask" data-task="'+t.id+'" data-sub="'+s2.id+'" '+(s2.done?'checked':'')+'>' +
+        '<input type="checkbox" id="subtask-check-'+s2.id+'" data-action="toggle-subtask" data-task="'+t.id+'" data-sub="'+s2.id+'" '+(s2.done?'checked':'')+'>' +
         '<span class="subtask-title '+(s2.done?'done':'')+'" contenteditable="true" data-action="edit-subtask" data-task="'+t.id+'" data-sub="'+s2.id+'">'+escapeHtml(s2.title)+'</span>' +
         '<button type="button" class="del-btn-sm" data-action="delete-subtask" data-task="'+t.id+'" data-sub="'+s2.id+'" aria-label="Delete subtask">✕</button>' +
       '</li>';
@@ -718,7 +719,7 @@
     return '<div class="subtask-block">' +
         (items ? '<ul class="subtask-list">'+items+'</ul>' : '') +
         '<form class="add-subtask-form" data-task="'+t.id+'">' +
-          '<input type="text" class="add-subtask-input" placeholder="Add subtask…" autocomplete="off">' +
+          '<input type="text" id="subtask-input-'+t.id+'" class="add-subtask-input" placeholder="Add subtask…" autocomplete="off">' +
           '<button type="submit" class="btn-ghost btn-sm">+ Add</button>' +
         '</form>' +
       '</div>';
@@ -770,11 +771,6 @@
   document.getElementById('toggle-done').addEventListener('change', function(e){
     showDone = e.target.checked;
     render();
-  });
-
-  document.getElementById('seed-banner').addEventListener('click', function(e){
-    var btn = e.target.closest('[data-action="dismiss-banner"]');
-    if (btn) document.getElementById('seed-banner').setAttribute('hidden','');
   });
 
   function closeStatusMenu(){
