@@ -276,6 +276,7 @@
     font-family:'IBM Plex Mono', monospace;
   }
   .task-list{ list-style:none; margin:0; padding:0; }
+  .task-item{ margin:0; }
   section.area.collapsed .task-list{ display:none; }
   .task-row{
     display:flex;
@@ -285,6 +286,66 @@
     border-top:1px solid var(--border);
     flex-wrap:wrap;
   }
+  .sub-toggle{
+    font-family:inherit;
+    font-size:0.72rem;
+    color:var(--text-muted);
+    background:var(--surface-2);
+    border:1px solid var(--border);
+    border-radius:999px;
+    padding:4px 9px;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .sub-toggle:hover{ color:var(--text); }
+  .sub-toggle.has-subs{ color:var(--accent-text); background:var(--accent-soft); border-color:var(--accent-soft); }
+  .subtask-block{
+    padding:6px 14px 12px 42px;
+    border-top:1px dashed var(--border);
+    background:var(--surface-2);
+  }
+  .subtask-list{ list-style:none; margin:0 0 6px; padding:0; }
+  .subtask-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:4px 0;
+  }
+  .subtask-row input[type="checkbox"]{
+    width:14px; height:14px;
+    accent-color: var(--status-done);
+    flex:none;
+    cursor:pointer;
+  }
+  .subtask-title{
+    flex:1;
+    font-size:0.8rem;
+    line-height:1.4;
+    word-break: break-word;
+  }
+  .subtask-title:focus{ background: var(--surface); border-radius:4px; }
+  .subtask-title.done{ color:var(--text-muted); text-decoration: line-through; text-decoration-color: var(--border); }
+  .del-btn-sm{
+    background:none;
+    border:none;
+    color:var(--text-muted);
+    cursor:pointer;
+    font-size:0.68rem;
+    padding:2px 4px;
+    flex:none;
+  }
+  .del-btn-sm:hover{ color:var(--status-blocked); }
+  .add-subtask-form{
+    display:flex;
+    gap:6px;
+  }
+  .add-subtask-form input{
+    font-size:0.78rem;
+    padding:5px 8px;
+    flex:1;
+    max-width:220px;
+  }
+  .btn-sm{ font-size:0.74rem; padding:5px 9px; }
   .task-row.done .task-title{ color:var(--text-muted); text-decoration: line-through; text-decoration-color: var(--border); }
   .task-check{
     margin-top:3px;
@@ -495,6 +556,9 @@
       <button type="submit" class="btn-ghost">+ Add category</button>
     </form>
     <label><input type="checkbox" id="toggle-done"> Show completed</label>
+    <button type="button" class="btn-ghost" id="export-btn">⬇ Backup</button>
+    <button type="button" class="btn-ghost" id="import-btn">⬆ Restore</button>
+    <input type="file" id="import-file" accept="application/json" hidden>
   </div>
 
   <div id="board"></div>
@@ -538,6 +602,7 @@
   var state = loadState();
   var showDone = false;
   var openMenuId = null;
+  var expandedSubtasks = {};
 
   function loadState(){
     var s = null;
@@ -616,7 +681,11 @@
       state.assignees.map(function(a){
         return '<option value="'+escapeHtml(a)+'" '+(t.assignee===a?'selected':'')+'>'+escapeHtml(a)+'</option>';
       }).join('');
-    return '<li class="task-row '+(t.status==='done'?'done':'')+'" data-id="'+t.id+'">' +
+    var subs = t.subtasks || [];
+    var subDone = subs.filter(function(s2){ return s2.done; }).length;
+    var subLabel = subs.length ? ('☑ '+subDone+'/'+subs.length) : '+ Subtasks';
+    return '<li class="task-item" data-id="'+t.id+'">' +
+      '<div class="task-row '+(t.status==='done'?'done':'')+'">' +
       '<input type="checkbox" class="task-check" data-action="toggle-done" data-id="'+t.id+'" '+(t.status==='done'?'checked':'')+'>' +
       '<div class="task-main">' +
         '<div class="task-title" contenteditable="true" data-action="edit-title" data-id="'+t.id+'">'+escapeHtml(t.title)+'</div>' +
@@ -624,6 +693,7 @@
       '</div>' +
       '<div class="task-meta">' +
         (t.seeded ? '<span class="source-tag" title="Seeded from earlier project notes — verify">from notes</span>' : '') +
+        '<button type="button" class="sub-toggle '+(subs.length?'has-subs':'')+'" data-action="toggle-subtasks" data-id="'+t.id+'">'+subLabel+'</button>' +
         '<select class="assignee '+(t.assignee?'is-set':'')+'" data-action="set-assignee" data-id="'+t.id+'">'+assigneeOptions+'</select>' +
         '<input type="date" class="due mono" data-action="set-due" data-id="'+t.id+'" value="'+(t.due||'')+'">' +
         '<div class="status-pill">' +
@@ -631,7 +701,27 @@
         '</div>' +
         '<button type="button" class="del-btn" data-action="delete" data-id="'+t.id+'" aria-label="Delete task">✕</button>' +
       '</div>' +
+      '</div>' +
+      subtaskBlockHtml(t, subs) +
     '</li>';
+  }
+
+  function subtaskBlockHtml(t, subs){
+    if (!expandedSubtasks[t.id]) return '';
+    var items = subs.map(function(s2){
+      return '<li class="subtask-row" data-subid="'+s2.id+'">' +
+        '<input type="checkbox" data-action="toggle-subtask" data-task="'+t.id+'" data-sub="'+s2.id+'" '+(s2.done?'checked':'')+'>' +
+        '<span class="subtask-title '+(s2.done?'done':'')+'" contenteditable="true" data-action="edit-subtask" data-task="'+t.id+'" data-sub="'+s2.id+'">'+escapeHtml(s2.title)+'</span>' +
+        '<button type="button" class="del-btn-sm" data-action="delete-subtask" data-task="'+t.id+'" data-sub="'+s2.id+'" aria-label="Delete subtask">✕</button>' +
+      '</li>';
+    }).join('');
+    return '<div class="subtask-block">' +
+        (items ? '<ul class="subtask-list">'+items+'</ul>' : '') +
+        '<form class="add-subtask-form" data-task="'+t.id+'">' +
+          '<input type="text" class="add-subtask-input" placeholder="Add subtask…" autocomplete="off">' +
+          '<button type="submit" class="btn-ghost btn-sm">+ Add</button>' +
+        '</form>' +
+      '</div>';
   }
 
   function persist(){
@@ -725,6 +815,17 @@
       if (openMenuId === id){ closeStatusMenu(); } else { openStatusMenu(id, el); }
       return;
     }
+    if (action === 'toggle-subtasks'){
+      expandedSubtasks[id] = !expandedSubtasks[id];
+      render();
+      return;
+    }
+    if (action === 'delete-subtask'){
+      var tsub = findTask(el.getAttribute('data-task'));
+      if (tsub){ tsub.subtasks = (tsub.subtasks||[]).filter(function(s){ return s.id !== el.getAttribute('data-sub'); }); }
+      persist();
+      return;
+    }
     if (action === 'delete'){
       state.tasks = state.tasks.filter(function(x){ return x.id !== id; });
       persist();
@@ -768,6 +869,30 @@
       if (t3){ t3.assignee = el.value; }
       persist();
     }
+    if (el.getAttribute('data-action') === 'toggle-subtask'){
+      var t4 = findTask(el.getAttribute('data-task'));
+      if (t4){
+        var sub = (t4.subtasks||[]).find(function(s){ return s.id === el.getAttribute('data-sub'); });
+        if (sub) sub.done = el.checked;
+      }
+      persist();
+    }
+  });
+
+  document.getElementById('board').addEventListener('submit', function(e){
+    var form = e.target.closest('.add-subtask-form');
+    if (!form) return;
+    e.preventDefault();
+    var taskId = form.getAttribute('data-task');
+    var input = form.querySelector('.add-subtask-input');
+    var title = input.value.trim();
+    if (!title) return;
+    var t = findTask(taskId);
+    if (!t) return;
+    if (!t.subtasks) t.subtasks = [];
+    t.subtasks.push({id: uid('sub'), title: title, done: false});
+    expandedSubtasks[taskId] = true;
+    persist();
   });
 
   document.getElementById('add-assignee-form').addEventListener('submit', function(e){
@@ -789,6 +914,48 @@
     persist();
   });
 
+  document.getElementById('export-btn').addEventListener('click', function(){
+    var blob = new Blob([JSON.stringify(state, null, 2)], {type: 'application/json'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    var stamp = new Date().toISOString().slice(0,10);
+    a.href = url;
+    a.download = 'signal-board-backup-' + stamp + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+
+  document.getElementById('import-btn').addEventListener('click', function(){
+    document.getElementById('import-file').click();
+  });
+
+  document.getElementById('import-file').addEventListener('change', function(e){
+    var file = e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(){
+      var parsed;
+      try {
+        parsed = JSON.parse(reader.result);
+      } catch (err) {
+        alert('That file isn\'t valid backup JSON.');
+        return;
+      }
+      if (!parsed || !Array.isArray(parsed.tasks) || !Array.isArray(parsed.areas)){
+        alert('That file doesn\'t look like a Signal Board backup.');
+        return;
+      }
+      if (!confirm('This replaces your current board with the backup. Continue?')) return;
+      if (!parsed.assignees) parsed.assignees = [];
+      state = parsed;
+      persist();
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  });
+
   document.getElementById('board').addEventListener('blur', function(e){
     var el = e.target.closest('[data-action="edit-title"]');
     if (!el) return;
@@ -803,9 +970,27 @@
     }
   }, true);
 
+  document.getElementById('board').addEventListener('blur', function(e){
+    var el = e.target.closest('[data-action="edit-subtask"]');
+    if (!el) return;
+    var t = findTask(el.getAttribute('data-task'));
+    if (!t) return;
+    var sub = (t.subtasks||[]).find(function(s){ return s.id === el.getAttribute('data-sub'); });
+    if (!sub) return;
+    var text = el.textContent.trim();
+    if (text && text !== sub.title){
+      sub.title = text;
+      persist();
+    } else if (!text){
+      el.textContent = sub.title;
+    }
+  }, true);
+
   document.getElementById('board').addEventListener('keydown', function(e){
     var el = e.target.closest('[data-action="edit-title"]');
     if (el && e.key === 'Enter'){ e.preventDefault(); el.blur(); }
+    var subEl = e.target.closest('[data-action="edit-subtask"]');
+    if (subEl && e.key === 'Enter'){ e.preventDefault(); subEl.blur(); }
   });
 
   render();
