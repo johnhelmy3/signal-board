@@ -35,6 +35,12 @@
     --status-blocked-soft:#F8DEDC;
     --status-backlog:#5C716E;
     --status-backlog-soft:#E7ECEC;
+    --priority-high:#C4433B;
+    --priority-high-soft:#F8DEDC;
+    --priority-med:#B4790F;
+    --priority-med-soft:#F7E9D0;
+    --priority-low:#3C6E9E;
+    --priority-low-soft:#DDE9F2;
     --shadow: 0 1px 2px rgba(21,35,34,0.06), 0 1px 1px rgba(21,35,34,0.04);
     color-scheme: light;
   }
@@ -57,6 +63,12 @@
       --status-blocked-soft:#3B1D1B;
       --status-backlog:#93A6A2;
       --status-backlog-soft:#20302E;
+      --priority-high:#E2645C;
+      --priority-high-soft:#3B1D1B;
+      --priority-med:#E0A83B;
+      --priority-med-soft:#3A2E12;
+      --priority-low:#7FAEDC;
+      --priority-low-soft:#1B3244;
       --shadow: 0 1px 2px rgba(0,0,0,0.35);
       color-scheme: dark;
     }
@@ -79,6 +91,12 @@
     --status-blocked-soft:#3B1D1B;
     --status-backlog:#93A6A2;
     --status-backlog-soft:#20302E;
+    --priority-high:#E2645C;
+    --priority-high-soft:#3B1D1B;
+    --priority-med:#E0A83B;
+    --priority-med-soft:#3A2E12;
+    --priority-low:#7FAEDC;
+    --priority-low-soft:#1B3244;
     --shadow: 0 1px 2px rgba(0,0,0,0.35);
     color-scheme: dark;
   }
@@ -353,6 +371,65 @@
   }
   .btn-sm{ font-size:0.74rem; padding:5px 9px; }
   .task-row.done .task-title{ color:var(--text-muted); text-decoration: line-through; text-decoration-color: var(--border); }
+  .due.overdue{
+    background:var(--status-blocked-soft);
+    color:var(--status-blocked);
+    border-color:var(--status-blocked);
+    font-weight:600;
+  }
+  .priority-btn{
+    font-family:inherit;
+    font-size:0.72rem;
+    font-weight:600;
+    border:1px solid var(--border);
+    border-radius:999px;
+    padding:4px 9px 4px 7px;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    gap:5px;
+    background:var(--surface-2);
+    color:var(--text-muted);
+    white-space:nowrap;
+  }
+  .priority-btn .dot{ width:7px; height:7px; border-radius:50%; background:var(--text-muted); }
+  .priority-btn.high{ background:var(--priority-high-soft); color:var(--priority-high); }
+  .priority-btn.high .dot{ background:var(--priority-high); }
+  .priority-btn.med{ background:var(--priority-med-soft); color:var(--priority-med); }
+  .priority-btn.med .dot{ background:var(--priority-med); }
+  .priority-btn.low{ background:var(--priority-low-soft); color:var(--priority-low); }
+  .priority-btn.low .dot{ background:var(--priority-low); }
+  .archive-btn{
+    background:none;
+    border:none;
+    color:var(--text-muted);
+    cursor:pointer;
+    font-size:0.85rem;
+    padding:2px 4px;
+    flex:none;
+  }
+  .archive-btn:hover{ color:var(--accent); }
+  .archive-panel{
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:12px 14px;
+    margin-bottom:14px;
+    box-shadow:var(--shadow);
+  }
+  .archive-panel h3{ margin:0 0 8px; font-size:0.85rem; }
+  .archive-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:6px 0;
+    border-top:1px solid var(--border);
+    font-size:0.8rem;
+  }
+  .archive-row:first-of-type{ border-top:none; }
+  .archive-row .a-title{ flex:1; }
+  .archive-row .a-area{ color:var(--text-muted); font-size:0.72rem; }
+  .archive-empty{ color:var(--text-muted); font-size:0.8rem; }
   .task-check{
     margin-top:3px;
     width:16px; height:16px;
@@ -538,6 +615,12 @@
     <input type="text" id="new-title" placeholder="Add a task…" autocomplete="off" required>
     <select id="new-area"></select>
     <select id="new-assignee"></select>
+    <select id="new-priority">
+      <option value="">Priority</option>
+      <option value="high">High</option>
+      <option value="med">Med</option>
+      <option value="low">Low</option>
+    </select>
     <input type="date" id="new-due">
     <button type="submit" class="btn">Add</button>
   </form>
@@ -557,10 +640,13 @@
       <button type="submit" class="btn-ghost">+ Add category</button>
     </form>
     <label><input type="checkbox" id="toggle-done"> Show completed</label>
+    <button type="button" class="btn-ghost" id="archive-toggle-btn">🗄 Archive</button>
     <button type="button" class="btn-ghost" id="export-btn">⬇ Backup</button>
     <button type="button" class="btn-ghost" id="import-btn">⬆ Restore</button>
     <input type="file" id="import-file" accept="application/json" hidden>
   </div>
+
+  <div class="archive-panel" id="archive-panel" hidden></div>
 
   <div id="board"></div>
 
@@ -599,11 +685,25 @@
     {id:"blocked", label:"Blocked"},
     {id:"done", label:"Done"}
   ];
+  var PRIORITIES = {
+    "": {label:"Priority", rank:3},
+    "high": {label:"High", rank:0},
+    "med": {label:"Med", rank:1},
+    "low": {label:"Low", rank:2}
+  };
+  var PRIORITY_CYCLE = ["", "high", "med", "low"];
+  function todayStr(){
+    var d = new Date();
+    var m = String(d.getMonth()+1).padStart(2,'0');
+    var day = String(d.getDate()).padStart(2,'0');
+    return d.getFullYear()+'-'+m+'-'+day;
+  }
   var STORAGE_KEY = 'signal-board-state-v1';
   var state = loadState();
   var showDone = false;
   var openMenuId = null;
   var expandedSubtasks = {};
+  var archiveOpen = false;
 
   function loadState(){
     var s = null;
@@ -613,6 +713,7 @@
     } catch (e) { /* corrupt or unavailable, fall back to seed */ }
     if (!s) s = JSON.parse(document.getElementById('state-data').textContent);
     if (!s.assignees) s.assignees = [];
+    if (!s.archivedTasks) s.archivedTasks = [];
     return s;
   }
 
@@ -663,6 +764,12 @@
     var board = document.getElementById('board');
     board.innerHTML = state.areas.map(function(area){
       var tasks = state.tasks.filter(function(t){ return t.area===area.id && (showDone || t.status!=='done'); });
+      tasks = tasks.map(function(t, i){ return {t:t, i:i}; }).sort(function(a, b){
+        var ra = (PRIORITIES[a.t.priority||''] || PRIORITIES['']).rank;
+        var rb = (PRIORITIES[b.t.priority||''] || PRIORITIES['']).rank;
+        if (ra !== rb) return ra - rb;
+        return a.i - b.i;
+      }).map(function(x){ return x.t; });
       var totalOpen = state.tasks.filter(function(t){ return t.area===area.id && t.status!=='done'; }).length;
       var rows = tasks.length ? tasks.map(rowHtml).join('') :
         '<li class="empty-msg">Nothing here'+(totalOpen===0 && !showDone ? '' : ' matching the current filter')+'.</li>';
@@ -674,6 +781,24 @@
         '<ul class="task-list">'+rows+'</ul>' +
       '</section>';
     }).join('');
+
+    var archived = state.archivedTasks || [];
+    document.getElementById('archive-toggle-btn').textContent = '🗄 Archive ('+archived.length+')';
+    var panel = document.getElementById('archive-panel');
+    if (archiveOpen){
+      panel.removeAttribute('hidden');
+      panel.innerHTML = '<h3>Archived tasks</h3>' + (archived.length ?
+        archived.slice().reverse().map(function(t){
+          return '<div class="archive-row">' +
+            '<span class="a-title">'+escapeHtml(t.title)+'</span>' +
+            '<span class="a-area">'+escapeHtml(t.areaName||'')+'</span>' +
+            '<button type="button" class="btn-ghost btn-sm" data-action="restore-task" data-id="'+t.id+'">↩ Restore</button>' +
+          '</div>';
+        }).join('') :
+        '<div class="archive-empty">Nothing archived yet — archive a completed task with the 📦 button on its row.</div>');
+    } else {
+      panel.setAttribute('hidden','');
+    }
   }
 
   function rowHtml(t){
@@ -685,6 +810,9 @@
     var subs = t.subtasks || [];
     var subDone = subs.filter(function(s2){ return s2.done; }).length;
     var subLabel = subs.length ? ('☑ '+subDone+'/'+subs.length) : '+ Subtasks';
+    var p = t.priority || '';
+    var pInfo = PRIORITIES[p] || PRIORITIES[''];
+    var isOverdue = t.due && t.due < todayStr() && t.status !== 'done';
     return '<li class="task-item" data-id="'+t.id+'">' +
       '<div class="task-row '+(t.status==='done'?'done':'')+'">' +
       '<input type="checkbox" class="task-check" data-action="toggle-done" data-id="'+t.id+'" '+(t.status==='done'?'checked':'')+'>' +
@@ -694,12 +822,14 @@
       '</div>' +
       '<div class="task-meta">' +
         (t.seeded ? '<span class="source-tag" title="Seeded from earlier project notes — verify">from notes</span>' : '') +
+        '<button type="button" class="priority-btn '+p+'" data-action="cycle-priority" data-id="'+t.id+'" title="Click to change priority"><span class="dot"></span>'+pInfo.label+'</button>' +
         '<button type="button" class="sub-toggle '+(subs.length?'has-subs':'')+'" data-action="toggle-subtasks" data-id="'+t.id+'">'+subLabel+'</button>' +
         '<select class="assignee '+(t.assignee?'is-set':'')+'" data-action="set-assignee" data-id="'+t.id+'">'+assigneeOptions+'</select>' +
-        '<input type="date" class="due mono" data-action="set-due" data-id="'+t.id+'" value="'+(t.due||'')+'">' +
+        '<input type="date" class="due mono '+(isOverdue?'overdue':'')+'" data-action="set-due" data-id="'+t.id+'" value="'+(t.due||'')+'">' +
         '<div class="status-pill">' +
           '<button type="button" class="status-btn '+s.id+'" data-action="toggle-menu" data-id="'+t.id+'"><span class="dot '+s.id+'"></span>'+s.label+'</button>' +
         '</div>' +
+        (t.status==='done' ? '<button type="button" class="archive-btn" data-action="archive-task" data-id="'+t.id+'" title="Archive this task">📦</button>' : '') +
         '<button type="button" class="del-btn" data-action="delete" data-id="'+t.id+'" aria-label="Delete task">✕</button>' +
       '</div>' +
       '</div>' +
@@ -749,10 +879,12 @@
     var area = document.getElementById('new-area').value;
     var due = document.getElementById('new-due').value;
     var assignee = document.getElementById('new-assignee').value.trim();
-    state.tasks.push({id: uid('t'), title: title, area: area, status:'backlog', due: due, assignee: assignee, notes:'', seeded:false});
+    var priority = document.getElementById('new-priority').value;
+    state.tasks.push({id: uid('t'), title: title, area: area, status:'backlog', due: due, assignee: assignee, priority: priority, notes:'', seeded:false, subtasks:[]});
     titleEl.value = '';
     document.getElementById('new-due').value = '';
     document.getElementById('new-assignee').value = '';
+    document.getElementById('new-priority').value = '';
     persist();
   });
 
@@ -771,6 +903,26 @@
   document.getElementById('toggle-done').addEventListener('change', function(e){
     showDone = e.target.checked;
     render();
+  });
+
+  document.getElementById('archive-toggle-btn').addEventListener('click', function(){
+    archiveOpen = !archiveOpen;
+    render();
+  });
+
+  document.getElementById('archive-panel').addEventListener('click', function(e){
+    var el = e.target.closest('[data-action="restore-task"]');
+    if (!el) return;
+    var id = el.getAttribute('data-id');
+    var ai = state.archivedTasks.findIndex(function(x){ return x.id === id; });
+    if (ai !== -1){
+      var task = state.archivedTasks[ai];
+      delete task.areaName;
+      delete task.archivedAt;
+      state.tasks.push(task);
+      state.archivedTasks.splice(ai, 1);
+    }
+    persist();
   });
 
   function closeStatusMenu(){
@@ -819,6 +971,28 @@
     if (action === 'delete-subtask'){
       var tsub = findTask(el.getAttribute('data-task'));
       if (tsub){ tsub.subtasks = (tsub.subtasks||[]).filter(function(s){ return s.id !== el.getAttribute('data-sub'); }); }
+      persist();
+      return;
+    }
+    if (action === 'cycle-priority'){
+      var tp = findTask(id);
+      if (tp){
+        var cur = PRIORITY_CYCLE.indexOf(tp.priority || '');
+        tp.priority = PRIORITY_CYCLE[(cur + 1) % PRIORITY_CYCLE.length];
+      }
+      persist();
+      return;
+    }
+    if (action === 'archive-task'){
+      var ti = state.tasks.findIndex(function(x){ return x.id === id; });
+      if (ti !== -1){
+        var task = state.tasks[ti];
+        var area = state.areas.find(function(a){ return a.id === task.area; });
+        task.areaName = area ? area.name : '';
+        task.archivedAt = todayStr();
+        state.archivedTasks.push(task);
+        state.tasks.splice(ti, 1);
+      }
       persist();
       return;
     }
@@ -945,6 +1119,7 @@
       }
       if (!confirm('This replaces your current board with the backup. Continue?')) return;
       if (!parsed.assignees) parsed.assignees = [];
+      if (!parsed.archivedTasks) parsed.archivedTasks = [];
       state = parsed;
       persist();
     };
