@@ -10,7 +10,6 @@
 <link rel="icon" href="icon-192.png">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Signal Board">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -740,7 +739,7 @@
 
     var areaSel = document.getElementById('new-area');
     var prevArea = areaSel.value;
-    areaSel.innerHTML = state.areas.map(function(a){ return '<option value="'+a.id+'">'+escapeHtml(a.name)+'</option>'; }).join('');
+    areaSel.innerHTML = state.areas.map(function(a){ return '<option value="'+escapeHtml(a.id)+'">'+escapeHtml(a.name)+'</option>'; }).join('');
     if (state.areas.some(function(a){ return a.id === prevArea; })) areaSel.value = prevArea;
 
     var assigneeSel = document.getElementById('new-assignee');
@@ -773,8 +772,8 @@
       var totalOpen = state.tasks.filter(function(t){ return t.area===area.id && t.status!=='done'; }).length;
       var rows = tasks.length ? tasks.map(rowHtml).join('') :
         '<li class="empty-msg">Nothing here'+(totalOpen===0 && !showDone ? '' : ' matching the current filter')+'.</li>';
-      return '<section class="area" data-area="'+area.id+'">' +
-        '<div class="area-head" data-action="toggle-area" data-area="'+area.id+'">' +
+      return '<section class="area" data-area="'+escapeHtml(area.id)+'">' +
+        '<div class="area-head" data-action="toggle-area" data-area="'+escapeHtml(area.id)+'">' +
           '<span class="chev">▾</span><h2>'+escapeHtml(area.name)+'</h2>' +
           '<span class="area-count mono">'+totalOpen+' open</span>' +
         '</div>' +
@@ -792,7 +791,7 @@
           return '<div class="archive-row">' +
             '<span class="a-title">'+escapeHtml(t.title)+'</span>' +
             '<span class="a-area">'+escapeHtml(t.areaName||'')+'</span>' +
-            '<button type="button" class="btn-ghost btn-sm" data-action="restore-task" data-id="'+t.id+'">↩ Restore</button>' +
+            '<button type="button" class="btn-ghost btn-sm" data-action="restore-task" data-id="'+escapeHtml(t.id)+'">↩ Restore</button>' +
           '</div>';
         }).join('') :
         '<div class="archive-empty">Nothing archived yet — archive a completed task with the 📦 button on its row.</div>');
@@ -813,24 +812,24 @@
     var p = t.priority || '';
     var pInfo = PRIORITIES[p] || PRIORITIES[''];
     var isOverdue = t.due && t.due < todayStr() && t.status !== 'done';
-    return '<li class="task-item" data-id="'+t.id+'">' +
+    return '<li class="task-item" data-id="'+escapeHtml(t.id)+'">' +
       '<div class="task-row '+(t.status==='done'?'done':'')+'">' +
-      '<input type="checkbox" class="task-check" data-action="toggle-done" data-id="'+t.id+'" '+(t.status==='done'?'checked':'')+'>' +
+      '<input type="checkbox" class="task-check" data-action="toggle-done" data-id="'+escapeHtml(t.id)+'" '+(t.status==='done'?'checked':'')+'>' +
       '<div class="task-main">' +
-        '<div class="task-title" contenteditable="true" data-action="edit-title" data-id="'+t.id+'">'+escapeHtml(t.title)+'</div>' +
+        '<div class="task-title" contenteditable="true" data-action="edit-title" data-id="'+escapeHtml(t.id)+'">'+escapeHtml(t.title)+'</div>' +
         (t.notes ? '<div class="task-notes">'+escapeHtml(t.notes)+'</div>' : '') +
       '</div>' +
       '<div class="task-meta">' +
         (t.seeded ? '<span class="source-tag" title="Seeded from earlier project notes — verify">from notes</span>' : '') +
-        '<button type="button" class="priority-btn '+p+'" data-action="cycle-priority" data-id="'+t.id+'" title="Click to change priority"><span class="dot"></span>'+pInfo.label+'</button>' +
-        '<button type="button" class="sub-toggle '+(subs.length?'has-subs':'')+'" data-action="toggle-subtasks" data-id="'+t.id+'">'+subLabel+'</button>' +
-        '<select class="assignee '+(t.assignee?'is-set':'')+'" data-action="set-assignee" data-id="'+t.id+'">'+assigneeOptions+'</select>' +
-        '<input type="date" class="due mono '+(isOverdue?'overdue':'')+'" data-action="set-due" data-id="'+t.id+'" value="'+(t.due||'')+'">' +
+        '<button type="button" class="priority-btn '+escapeHtml(p)+'" data-action="cycle-priority" data-id="'+escapeHtml(t.id)+'" title="Click to change priority"><span class="dot"></span>'+pInfo.label+'</button>' +
+        '<button type="button" class="sub-toggle '+(subs.length?'has-subs':'')+'" data-action="toggle-subtasks" data-id="'+escapeHtml(t.id)+'">'+subLabel+'</button>' +
+        '<select class="assignee '+(t.assignee?'is-set':'')+'" data-action="set-assignee" data-id="'+escapeHtml(t.id)+'">'+assigneeOptions+'</select>' +
+        '<input type="date" class="due mono '+(isOverdue?'overdue':'')+'" data-action="set-due" data-id="'+escapeHtml(t.id)+'" value="'+escapeHtml(t.due||'')+'">' +
         '<div class="status-pill">' +
-          '<button type="button" class="status-btn '+s.id+'" data-action="toggle-menu" data-id="'+t.id+'"><span class="dot '+s.id+'"></span>'+s.label+'</button>' +
+          '<button type="button" class="status-btn '+s.id+'" data-action="toggle-menu" data-id="'+escapeHtml(t.id)+'"><span class="dot '+s.id+'"></span>'+s.label+'</button>' +
         '</div>' +
-        (t.status==='done' ? '<button type="button" class="archive-btn" data-action="archive-task" data-id="'+t.id+'" title="Archive this task">📦</button>' : '') +
-        '<button type="button" class="del-btn" data-action="delete" data-id="'+t.id+'" aria-label="Delete task">✕</button>' +
+        (t.status==='done' ? '<button type="button" class="archive-btn" data-action="archive-task" data-id="'+escapeHtml(t.id)+'" title="Archive this task">📦</button>' : '') +
+        '<button type="button" class="del-btn" data-action="delete" data-id="'+escapeHtml(t.id)+'" aria-label="Delete task">✕</button>' +
       '</div>' +
       '</div>' +
       subtaskBlockHtml(t, subs) +
@@ -840,16 +839,16 @@
   function subtaskBlockHtml(t, subs){
     if (!expandedSubtasks[t.id]) return '';
     var items = subs.map(function(s2){
-      return '<li class="subtask-row" data-subid="'+s2.id+'">' +
-        '<input type="checkbox" id="subtask-check-'+s2.id+'" data-action="toggle-subtask" data-task="'+t.id+'" data-sub="'+s2.id+'" '+(s2.done?'checked':'')+'>' +
-        '<span class="subtask-title '+(s2.done?'done':'')+'" contenteditable="true" data-action="edit-subtask" data-task="'+t.id+'" data-sub="'+s2.id+'">'+escapeHtml(s2.title)+'</span>' +
-        '<button type="button" class="del-btn-sm" data-action="delete-subtask" data-task="'+t.id+'" data-sub="'+s2.id+'" aria-label="Delete subtask">✕</button>' +
+      return '<li class="subtask-row" data-subid="'+escapeHtml(s2.id)+'">' +
+        '<input type="checkbox" id="subtask-check-'+escapeHtml(s2.id)+'" data-action="toggle-subtask" data-task="'+escapeHtml(t.id)+'" data-sub="'+escapeHtml(s2.id)+'" '+(s2.done?'checked':'')+'>' +
+        '<span class="subtask-title '+(s2.done?'done':'')+'" contenteditable="true" data-action="edit-subtask" data-task="'+escapeHtml(t.id)+'" data-sub="'+escapeHtml(s2.id)+'">'+escapeHtml(s2.title)+'</span>' +
+        '<button type="button" class="del-btn-sm" data-action="delete-subtask" data-task="'+escapeHtml(t.id)+'" data-sub="'+escapeHtml(s2.id)+'" aria-label="Delete subtask">✕</button>' +
       '</li>';
     }).join('');
     return '<div class="subtask-block">' +
         (items ? '<ul class="subtask-list">'+items+'</ul>' : '') +
-        '<form class="add-subtask-form" data-task="'+t.id+'">' +
-          '<input type="text" id="subtask-input-'+t.id+'" class="add-subtask-input" placeholder="Add subtask…" autocomplete="off">' +
+        '<form class="add-subtask-form" data-task="'+escapeHtml(t.id)+'">' +
+          '<input type="text" id="subtask-input-'+escapeHtml(t.id)+'" class="add-subtask-input" placeholder="Add subtask…" autocomplete="off">' +
           '<button type="submit" class="btn-ghost btn-sm">+ Add</button>' +
         '</form>' +
       '</div>';
@@ -935,7 +934,7 @@
     openMenuId = id;
     var overlay = document.getElementById('status-overlay');
     overlay.innerHTML = STATUSES.map(function(opt){
-      return '<button type="button" data-action="set-status" data-id="'+id+'" data-status="'+opt.id+'"><span class="dot '+opt.id+'"></span>'+opt.label+'</button>';
+      return '<button type="button" data-action="set-status" data-id="'+escapeHtml(id)+'" data-status="'+opt.id+'"><span class="dot '+opt.id+'"></span>'+opt.label+'</button>';
     }).join('');
     overlay.removeAttribute('hidden');
     var r = btn.getBoundingClientRect();
@@ -955,7 +954,7 @@
     var id = el.getAttribute('data-id');
 
     if (action === 'toggle-area'){
-      var section = document.querySelector('section.area[data-area="'+el.getAttribute('data-area')+'"]');
+      var section = document.querySelector('section.area[data-area="'+CSS.escape(el.getAttribute('data-area'))+'"]');
       if (section) section.classList.toggle('collapsed');
       return;
     }
