@@ -596,6 +596,32 @@
     font-size:0.72rem;
     margin-top:24px;
   }
+  footer.foot.warn{ color:var(--status-blocked); font-weight:600; }
+  .cloud-panel{
+    display:flex;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:6px;
+    margin:-4px 0 14px;
+    font-size:0.76rem;
+    color:var(--text-muted);
+  }
+  .cloud-panel[hidden]{ display:none; }
+  .cloud-panel form{ display:flex; flex-wrap:wrap; gap:6px; }
+  .cloud-panel input{
+    font-family:inherit;
+    font-size:0.76rem;
+    color:var(--text);
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:6px;
+    padding:5px 8px;
+    width:170px;
+  }
+  .cloud-panel input:focus{ outline:2px solid var(--accent); outline-offset:1px; }
+  .cloud-panel .cloud-user{ color:var(--text); font-weight:600; }
+  .cloud-panel .cloud-msg{ width:100%; }
+  .cloud-panel .cloud-msg.err{ color:var(--status-blocked); }
   @media (prefers-reduced-motion: reduce){
     .area-head .chev{ transition:none; }
   }
@@ -607,6 +633,21 @@
     <span class="mono" style="font-size:0.78rem;color:var(--text-muted);" id="today-label"></span>
   </header>
   <p class="subtitle">John's running task tracker — VAS platform work and day-to-day to-dos.</p>
+
+  <div class="cloud-panel" id="cloud-panel" hidden>
+    <span class="team-label">Cloud:</span>
+    <form id="cloud-signin-form" hidden>
+      <input type="email" id="cloud-email" placeholder="Email" autocomplete="email" required>
+      <input type="password" id="cloud-password" placeholder="Password" autocomplete="current-password" required minlength="6">
+      <button type="submit" class="btn-ghost">Sign in</button>
+      <button type="button" class="btn-ghost" id="cloud-signup-btn">Create account</button>
+    </form>
+    <span id="cloud-account" hidden>
+      <span class="cloud-user" id="cloud-user"></span>
+      <button type="button" class="btn-ghost btn-sm" id="cloud-signout-btn">Sign out</button>
+    </span>
+    <span class="cloud-msg" id="cloud-msg" hidden></span>
+  </div>
 
   <div class="stats" id="stats"></div>
 
@@ -651,7 +692,7 @@
 
   <div class="status-menu" id="status-overlay" hidden></div>
 
-  <footer class="foot">Kept in sync automatically as you edit.</footer>
+  <footer class="foot" id="sync-status">Saved on this device only.</footer>
 </div>
 
 <script id="state-data" type="application/json">
@@ -676,6 +717,8 @@
 }
 </script>
 
+<script src="config.js"></script>
+<script src="vendor/supabase-js-2.117.2.js"></script>
 <script>
 (function(){
   var STATUSES = [
@@ -711,6 +754,13 @@
       if (saved) s = JSON.parse(saved);
     } catch (e) { /* corrupt or unavailable, fall back to seed */ }
     if (!s) s = JSON.parse(document.getElementById('state-data').textContent);
+    return normalizeState(s);
+  }
+
+  function isBoard(s){
+    return !!s && Array.isArray(s.tasks) && Array.isArray(s.areas);
+  }
+  function normalizeState(s){
     if (!s.assignees) s.assignees = [];
     if (!s.archivedTasks) s.archivedTasks = [];
     return s;
@@ -860,6 +910,16 @@
   }
 
   function saveState(){
+    saveLocalCopy();
+    if (cloud.user){
+      cloud.editSeq++;
+      cloud.dirty = true;
+      saveSyncMeta();
+      schedulePush();
+    }
+  }
+
+  function saveLocalCopy(){
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch (e) { /* storage full or unavailable */ }
@@ -1083,17 +1143,21 @@
     persist();
   });
 
-  document.getElementById('export-btn').addEventListener('click', function(){
-    var blob = new Blob([JSON.stringify(state, null, 2)], {type: 'application/json'});
+  function downloadJson(data, prefix){
+    var blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
     var stamp = new Date().toISOString().slice(0,10);
     a.href = url;
-    a.download = 'signal-board-backup-' + stamp + '.json';
+    a.download = prefix + stamp + '.json';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  }
+
+  document.getElementById('export-btn').addEventListener('click', function(){
+    downloadJson(state, 'signal-board-backup-');
   });
 
   document.getElementById('import-btn').addEventListener('click', function(){
@@ -1112,14 +1176,12 @@
         alert('That file isn\'t valid backup JSON.');
         return;
       }
-      if (!parsed || !Array.isArray(parsed.tasks) || !Array.isArray(parsed.areas)){
+      if (!isBoard(parsed)){
         alert('That file doesn\'t look like a Signal Board backup.');
         return;
       }
-      if (!confirm('This replaces your current board with the backup. Continue?')) return;
-      if (!parsed.assignees) parsed.assignees = [];
-      if (!parsed.archivedTasks) parsed.archivedTasks = [];
-      state = parsed;
+      if (!confirm('This replaces your current board' + (cloud.user ? ' (including the cloud copy)' : '') + ' with the backup. Continue?')) return;
+      state = normalizeState(parsed);
       persist();
     };
     reader.readAsText(file);
@@ -1163,7 +1225,250 @@
     if (subEl && e.key === 'Enter'){ e.preventDefault(); subEl.blur(); }
   });
 
+  // ---- Cloud sync (Supabase) ----
+  // When signed in, the cloud copy is the source of truth. localStorage only
+  // keeps a working copy so the board opens instantly and offline edits can be
+  // uploaded later. Each save bumps `version`; a save based on an old version
+  // is rejected, so two devices never silently overwrite each other.
+  var SYNC_KEY = 'signal-board-sync-v1';
+  var cfg = window.SIGNAL_BOARD_CONFIG || {};
+  var cloud = {
+    client: null,
+    user: null,
+    version: 0,      // cloud version this device's board is based on (0 = none yet)
+    dirty: false,    // local edits not yet saved to the cloud
+    editSeq: 0,
+    busy: false,
+    queued: false,
+    pushTimer: null,
+    retryTimer: null,
+    lastSynced: null
+  };
+
+  function loadSyncMeta(){
+    try { return JSON.parse(localStorage.getItem(SYNC_KEY)) || {}; } catch (e) { return {}; }
+  }
+  function saveSyncMeta(){
+    if (!cloud.user) return;
+    try {
+      localStorage.setItem(SYNC_KEY, JSON.stringify({userId: cloud.user.id, version: cloud.version, dirty: cloud.dirty}));
+    } catch (e) { /* storage unavailable */ }
+  }
+  function hasLocalBoard(){
+    try { return !!localStorage.getItem(STORAGE_KEY); } catch (e) { return false; }
+  }
+
+  function setSync(status, detail){
+    var el = document.getElementById('sync-status');
+    var text = {
+      local: 'Saved on this device only.',
+      'signed-out': 'Not signed in — changes are saved on this device only.',
+      checking: 'Checking cloud…',
+      saving: 'Saving to cloud…',
+      synced: 'Saved to cloud' + (cloud.lastSynced ? ' · ' + cloud.lastSynced.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '') + '.',
+      offline: 'Offline — changes are kept on this device and will upload when you\'re back online.',
+      error: 'Cloud save failed' + (detail ? ' (' + detail + ')' : '') + ' — changes are kept on this device. Retrying…'
+    }[status];
+    el.textContent = text;
+    el.classList.toggle('warn', status === 'signed-out' || status === 'offline' || status === 'error');
+  }
+
+  function cloudMsg(text, isError){
+    var el = document.getElementById('cloud-msg');
+    el.textContent = text || '';
+    el.hidden = !text;
+    el.classList.toggle('err', !!isError);
+  }
+
+  function renderCloudPanel(){
+    document.getElementById('cloud-signin-form').hidden = !!cloud.user;
+    document.getElementById('cloud-account').hidden = !cloud.user;
+    document.getElementById('cloud-user').textContent = cloud.user ? cloud.user.email : '';
+  }
+
+  function schedulePush(){
+    clearTimeout(cloud.pushTimer);
+    cloud.pushTimer = setTimeout(sync, 800);
+  }
+
+  // Run one sync at a time; a request that arrives mid-sync runs right after.
+  function sync(){
+    if (!cloud.user) return;
+    if (cloud.busy){ cloud.queued = true; return; }
+    cloud.busy = true;
+    clearTimeout(cloud.retryTimer);
+    Promise.resolve().then(syncOnce).catch(syncFailed).then(function(){
+      cloud.busy = false;
+      if (cloud.queued){ cloud.queued = false; sync(); }
+    });
+  }
+
+  function syncOnce(){
+    var uid = cloud.user.id;
+    if (cloud.dirty && cloud.version > 0) return pushBoard(uid);
+    setSync('checking');
+    return fetchRow(uid).then(function(row){ return handleRemote(uid, row); });
+  }
+
+  function fetchRow(uid){
+    return cloud.client.from('boards').select('data, version').eq('user_id', uid).maybeSingle().then(function(res){
+      if (res.error) throw res.error;
+      return res.data;
+    });
+  }
+
+  function handleRemote(uid, row){
+    if (!cloud.user || cloud.user.id !== uid) return;
+    if (!row){
+      // Nothing in the cloud for this account yet: upload this device's board.
+      cloud.version = 0;
+      cloud.dirty = true;
+      return pushBoard(uid);
+    }
+    if (!isBoard(row.data)) throw new Error('cloud board is unreadable');
+    if (row.version === cloud.version) return cloud.dirty ? pushBoard(uid) : markSynced();
+    if (!cloud.dirty) return applyCloud(row);
+    var useCloud = confirm('Your board was also changed somewhere else (another device or browser).\n\n' +
+      'OK = use the cloud board here. This device\'s version is downloaded as a backup file first.\n\n' +
+      'Cancel = keep this device\'s board and replace the cloud copy. The cloud version is downloaded as a backup file first.');
+    if (useCloud){
+      downloadJson(state, 'signal-board-this-device-');
+      return applyCloud(row);
+    }
+    downloadJson(row.data, 'signal-board-cloud-');
+    cloud.version = row.version;
+    return pushBoard(uid);
+  }
+
+  function pushBoard(uid){
+    var seq = cloud.editSeq;
+    var base = cloud.version;
+    var snapshot = JSON.parse(JSON.stringify(state));
+    setSync('saving');
+    var boards = cloud.client.from('boards');
+    var q = base === 0
+      ? boards.insert({user_id: uid, data: snapshot, version: 1}).select('version')
+      : boards.update({data: snapshot, version: base + 1, updated_at: new Date().toISOString()})
+          .eq('user_id', uid).eq('version', base).select('version');
+    return q.then(function(res){
+      if (!cloud.user || cloud.user.id !== uid) return;
+      var conflict = (res.error && res.error.code === '23505') || (!res.error && (!res.data || !res.data.length));
+      if (conflict){
+        // Another device saved first: compare against what's in the cloud now.
+        return fetchRow(uid).then(function(row){ return handleRemote(uid, row); });
+      }
+      if (res.error) throw res.error;
+      cloud.version = res.data[0].version;
+      if (cloud.editSeq === seq) cloud.dirty = false;
+      markSynced();
+      if (cloud.dirty) schedulePush();
+    });
+  }
+
+  function applyCloud(row){
+    state = normalizeState(row.data);
+    cloud.version = row.version;
+    cloud.dirty = false;
+    saveLocalCopy();
+    closeStatusMenu();
+    render();
+    markSynced();
+  }
+
+  function markSynced(){
+    cloud.lastSynced = new Date();
+    saveSyncMeta();
+    setSync('synced');
+  }
+
+  function syncFailed(err){
+    var msg = (err && err.message) || String(err);
+    var offline = navigator.onLine === false || /fetch|network|load failed/i.test(msg);
+    setSync(offline ? 'offline' : 'error', msg);
+    clearTimeout(cloud.retryTimer);
+    cloud.retryTimer = setTimeout(sync, 30000);
+  }
+
+  function onSession(session){
+    var user = session ? session.user : null;
+    if ((user && user.id) === (cloud.user && cloud.user.id)) return; // e.g. token refresh
+    cloud.user = user;
+    clearTimeout(cloud.pushTimer);
+    clearTimeout(cloud.retryTimer);
+    renderCloudPanel();
+    if (!user){ setSync('signed-out'); return; }
+    cloudMsg('');
+    var meta = loadSyncMeta();
+    if (meta.userId === user.id){
+      cloud.version = meta.version || 0;
+      cloud.dirty = !!meta.dirty;
+    } else {
+      // First sign-in on this device: only treat the local board as worth
+      // keeping if something was actually saved here.
+      cloud.version = 0;
+      cloud.dirty = hasLocalBoard();
+    }
+    saveSyncMeta();
+    sync();
+  }
+
+  function initCloud(){
+    if (!cfg.supabaseUrl || !cfg.supabaseAnonKey || !window.supabase){
+      setSync('local');
+      return;
+    }
+    cloud.client = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+    document.getElementById('cloud-panel').hidden = false;
+    renderCloudPanel();
+    setSync('signed-out');
+    cloud.client.auth.onAuthStateChange(function(event, session){
+      // Defer: calling Supabase from inside this callback can deadlock.
+      setTimeout(function(){ onSession(session); }, 0);
+    });
+
+    document.getElementById('cloud-signin-form').addEventListener('submit', function(e){
+      e.preventDefault();
+      cloudMsg('Signing in…');
+      cloud.client.auth.signInWithPassword({
+        email: document.getElementById('cloud-email').value.trim(),
+        password: document.getElementById('cloud-password').value
+      }).then(function(res){
+        if (res.error) return cloudMsg(res.error.message, true);
+        document.getElementById('cloud-password').value = '';
+        cloudMsg('');
+      });
+    });
+
+    document.getElementById('cloud-signup-btn').addEventListener('click', function(){
+      var form = document.getElementById('cloud-signin-form');
+      if (!form.reportValidity()) return;
+      cloudMsg('Creating account…');
+      cloud.client.auth.signUp({
+        email: document.getElementById('cloud-email').value.trim(),
+        password: document.getElementById('cloud-password').value,
+        options: {emailRedirectTo: location.href.split('#')[0]}
+      }).then(function(res){
+        if (res.error) return cloudMsg(res.error.message, true);
+        document.getElementById('cloud-password').value = '';
+        cloudMsg(res.data.session ? '' : 'Check your email to confirm the account, then sign in here.');
+      });
+    });
+
+    document.getElementById('cloud-signout-btn').addEventListener('click', function(){
+      if (cloud.dirty && !confirm('Some changes haven\'t reached the cloud yet. Sign out anyway? They\'ll stay on this device only.')) return;
+      cloud.client.auth.signOut();
+    });
+
+    window.addEventListener('online', sync);
+    document.addEventListener('visibilitychange', function(){
+      if (!cloud.user) return;
+      if (document.visibilityState === 'visible') sync();               // pick up edits from other devices
+      else if (cloud.dirty){ clearTimeout(cloud.pushTimer); sync(); }   // flush before the app is backgrounded
+    });
+  }
+
   render();
+  initCloud();
 
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function(){

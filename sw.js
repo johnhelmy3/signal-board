@@ -1,6 +1,7 @@
 // Bump CACHE_NAME on each release so old caches are cleared on activate.
-var CACHE_NAME = 'signal-board-v2';
-var ASSETS = ['./index.html', './manifest.json', './icon-192.png', './icon-512.png'];
+var CACHE_NAME = 'signal-board-v3';
+var ASSETS = ['./index.html', './config.js', './vendor/supabase-js-2.117.2.js', './manifest.json', './icon-192.png', './icon-512.png'];
+var FONT_HOSTS = ['fonts.googleapis.com', 'fonts.gstatic.com'];
 
 self.addEventListener('install', function(event){
   event.waitUntil(
@@ -33,23 +34,29 @@ function offlineResponse(){
 self.addEventListener('fetch', function(event){
   var req = event.request;
   if (req.method !== 'GET') return;
+  var url = new URL(req.url);
 
-  // Pages: network first so app updates arrive, cached copy when offline.
-  if (req.mode === 'navigate'){
+  // Fonts never change: cache first.
+  if (FONT_HOSTS.indexOf(url.hostname) !== -1){
     event.respondWith(
-      fetch(req).then(function(resp){ return putInCache(req, resp); }).catch(function(){
-        return caches.match(req).then(function(cached){
-          return cached || caches.match('./index.html');
-        }).then(function(cached){ return cached || offlineResponse(); });
+      caches.match(req).then(function(cached){
+        return cached || fetch(req).then(function(resp){ return putInCache(req, resp); }).catch(offlineResponse);
       })
     );
     return;
   }
 
-  // Everything else (icons, manifest, fonts): cache first.
+  // Anything else off-site (the Supabase API included) goes straight to the
+  // network and is never cached: board data must always be live.
+  if (url.origin !== self.location.origin) return;
+
+  // App files: network first so updates arrive, cached copy only when offline.
   event.respondWith(
-    caches.match(req).then(function(cached){
-      return cached || fetch(req).then(function(resp){ return putInCache(req, resp); }).catch(offlineResponse);
+    fetch(req).then(function(resp){ return putInCache(req, resp); }).catch(function(){
+      return caches.match(req).then(function(cached){
+        if (cached) return cached;
+        return req.mode === 'navigate' ? caches.match('./index.html') : undefined;
+      }).then(function(cached){ return cached || offlineResponse(); });
     })
   );
 });
