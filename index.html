@@ -32,9 +32,9 @@ input[type=checkbox]{width:16px;height:16px}
 .sb .row{display:grid;align-items:center;gap:10px;padding:11px 12px}
 .sb .t{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sb .ttl{min-width:0}
-.sb .ttl>span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.sb .ttl>span:focus{white-space:normal;outline:1px solid var(--border-accent);border-radius:4px;padding:0 3px}
-.sb .note{font-size:12px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sb .ttl>span{display:block;white-space:normal;overflow-wrap:anywhere;line-height:1.4}
+.sb .ttl>span:focus{outline:1px solid var(--border-accent);border-radius:4px;padding:0 3px}
+.sb .note{font-size:12px;color:var(--text-muted);white-space:normal;overflow-wrap:anywhere}
 .sb .mut{color:var(--text-secondary);font-size:13px}
 .sb .tag{font-size:12px;padding:2px 7px;border-radius:6px;background:var(--bg-neutral);color:var(--text-secondary);white-space:nowrap}
 .sb .st{height:28px;font-size:13px;padding:0 6px;border-radius:13px;border:none}
