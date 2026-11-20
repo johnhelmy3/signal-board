@@ -9,42 +9,42 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Signal Board">
 <style>
-:root{--surface-1:#faf9f5;--surface-2:#fff;--bg-neutral:#eeece4;--bg-accent:#dbe8f7;--bg-warning:#faeeda;--bg-danger:#fcebeb;--bg-success:#eaf3de;--text-primary:#141413;--text-secondary:#5e5d59;--text-muted:#8a887f;--text-accent:#185fa5;--text-warning:#854f0b;--text-danger:#a32d2d;--text-success:#3b6d11;--border:rgba(20,20,19,.14);--border-strong:rgba(20,20,19,.28);--border-stronger:rgba(20,20,19,.45);--border-accent:#85b7eb;--radius:8px;--font-mono:ui-monospace,Menlo,monospace}
-@media(prefers-color-scheme:dark){:root{--surface-1:#1f1e1d;--surface-2:#2b2a28;--bg-neutral:#3a3936;--bg-accent:#1c3550;--bg-warning:#4a3512;--bg-danger:#4a1f1f;--bg-success:#25391a;--text-primary:#f0eee6;--text-secondary:#b5b3aa;--text-muted:#85837b;--text-accent:#85b7eb;--text-warning:#efb35c;--text-danger:#f09595;--text-success:#97c459;--border:rgba(240,238,230,.16);--border-strong:rgba(240,238,230,.3);--border-stronger:rgba(240,238,230,.5);--border-accent:#378add}}
+:root{--surface-1:#f5f2ea;--surface-2:#fffdf8;--bg-neutral:#ece8dd;--bg-accent:#dfeaf5;--bg-warning:#f8ecd2;--bg-danger:#f8e3df;--bg-success:#e4efd8;--text-primary:#2d2b28;--text-secondary:#625f58;--text-muted:#8c8980;--text-accent:#2a5f94;--text-warning:#8a5a12;--text-danger:#a8402f;--text-success:#3f6d1f;--border:rgba(45,43,40,.13);--border-strong:rgba(45,43,40,.26);--border-stronger:rgba(45,43,40,.42);--border-accent:#8fb6dc;--radius:8px;--font-mono:ui-monospace,Menlo,monospace}
+:root[data-theme=dark]{--surface-1:#26241f;--surface-2:#312f2a;--bg-neutral:#3a3936;--bg-accent:#1c3550;--bg-warning:#4a3512;--bg-danger:#4a1f1f;--bg-success:#25391a;--text-primary:#f0eee6;--text-secondary:#b5b3aa;--text-muted:#85837b;--text-accent:#85b7eb;--text-warning:#efb35c;--text-danger:#f09595;--text-success:#97c459;--border:rgba(240,238,230,.16);--border-strong:rgba(240,238,230,.3);--border-stronger:rgba(240,238,230,.5);--border-accent:#378add}
 *{box-sizing:border-box}
-body{margin:0;background:var(--surface-1);color:var(--text-primary);font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+body{margin:0;background:var(--surface-1);color:var(--text-primary);font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
 .wrap{max-width:980px;margin:0 auto;padding:24px 16px 60px}
-button,select,input[type=text],input[type=date]{font:inherit;font-size:13px;color:var(--text-primary);background:transparent;border:.5px solid var(--border-strong);border-radius:var(--radius);height:34px;padding:0 10px}
+button,select,input[type=text],input[type=date]{font:inherit;font-size:14px;color:var(--text-primary);background:transparent;border:.5px solid var(--border-strong);border-radius:var(--radius);height:36px;padding:0 10px}
 input[type=text],input[type=date]{background:var(--surface-2)}
 button{cursor:pointer}button:hover{background:var(--bg-neutral)}
 input[type=checkbox]{width:16px;height:16px}
 .sb .seg{display:flex;gap:4px;margin-bottom:12px;align-items:center}
 .sb .seg button.on,.sb .on.sm{background:var(--bg-accent);color:var(--text-accent);border-color:var(--border-accent)}
-.sb .sm{height:28px;font-size:12px;padding:0 10px}
+.sb .sm{height:30px;font-size:13px;padding:0 12px}
 .sb .chips{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0;align-items:center}
-.sb .chip{height:28px;padding:0 10px;border-radius:14px;font-size:12px;display:inline-flex;align-items:center;gap:6px}
+.sb .chip{height:30px;padding:0 12px;border-radius:15px;font-size:13px;display:inline-flex;align-items:center;gap:6px}
 .sb .chip.on{background:var(--bg-neutral);border-color:var(--border-stronger);font-weight:500}
 .sb .chip.fl.on{background:var(--bg-accent);color:var(--text-accent);border-color:var(--border-accent)}
 .sb .dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none}
 .sb .scroll{overflow-x:auto}
-.sb .ti{border-top:.5px solid var(--border);min-width:860px}
+.sb .ti{border-top:.5px solid var(--border);min-width:900px}
 .sb .ti:first-child{border-top:none}
-.sb .row{display:grid;align-items:center;gap:8px;padding:8px 10px}
+.sb .row{display:grid;align-items:center;gap:10px;padding:11px 12px}
 .sb .t{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sb .ttl{min-width:0}
 .sb .ttl>span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sb .ttl>span:focus{white-space:normal;outline:1px solid var(--border-accent);border-radius:4px;padding:0 3px}
-.sb .note{font-size:11px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.sb .mut{color:var(--text-secondary);font-size:12px}
-.sb .tag{font-size:11px;padding:2px 7px;border-radius:6px;background:var(--bg-neutral);color:var(--text-secondary);white-space:nowrap}
-.sb .st{height:26px;font-size:12px;padding:0 6px;border-radius:13px;border:none}
-.sb .ow{height:26px;font-size:12px;padding:0 4px;max-width:100%}
-.sb .du{height:26px;font-size:12px;padding:0 4px;width:100%}
-.sb .pb{height:24px;font-size:11px;padding:0 8px;border-radius:12px}
+.sb .note{font-size:12px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sb .mut{color:var(--text-secondary);font-size:13px}
+.sb .tag{font-size:12px;padding:2px 7px;border-radius:6px;background:var(--bg-neutral);color:var(--text-secondary);white-space:nowrap}
+.sb .st{height:28px;font-size:13px;padding:0 6px;border-radius:13px;border:none}
+.sb .ow{height:28px;font-size:13px;padding:0 4px;max-width:100%}
+.sb .du{height:28px;font-size:13px;padding:0 4px;width:100%}
+.sb .pb{height:26px;font-size:12px;padding:0 8px;border-radius:12px}
 .sb .pb.High{background:var(--bg-danger);color:var(--text-danger);border-color:transparent}
 .sb .pb.Medium{background:var(--bg-warning);color:var(--text-warning);border-color:transparent}
 .sb .pb.Low{background:var(--bg-accent);color:var(--text-accent);border-color:transparent}
-.sb .xs{height:24px;font-size:11px;padding:0 7px}
+.sb .xs{height:26px;font-size:12px;padding:0 7px}
 .sb .card{background:var(--surface-2);border:.5px solid var(--border);border-radius:12px;overflow:hidden}
 .sb .m{background:var(--bg-neutral);border-radius:var(--radius);padding:12px}
 .sb .m b{display:block;font-size:22px;font-weight:500}
@@ -56,8 +56,8 @@ input[type=checkbox]{width:16px;height:16px}
 .sb .s-progress{background:var(--bg-warning);color:var(--text-warning)}
 .sb .s-blocked{background:var(--bg-danger);color:var(--text-danger)}
 .sb .s-done{background:var(--bg-success);color:var(--text-success)}
-.sb .hint{font-size:12px;color:var(--text-muted);margin:6px 0 0}
-.sb .pv{font-size:12px;color:var(--text-accent);min-height:18px;margin:6px 0 0}
+.sb .hint{font-size:13px;color:var(--text-muted);margin:6px 0 0}
+.sb .pv{font-size:13px;color:var(--text-accent);min-height:18px;margin:6px 0 0}
 .sb .set{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;margin-bottom:6px}
 .sb .subs{padding:4px 10px 10px 40px;background:var(--bg-neutral)}
 .sb .subs .sr{display:flex;align-items:center;gap:8px;padding:3px 0}
@@ -114,6 +114,8 @@ async function init(){let db=null;try{if(window.claude&&window.claude.use)db=awa
 if(db){try{REF=db.doc('board/main');const r=await Promise.race([REF.get(),new Promise((_,j)=>setTimeout(()=>j(new Error('timeout')),10000))]);applyData(unwrap(r));MODE='db';loaded=true;setSV('Saved');draw()}catch(e){REF=null;setSV('Could not load: changes will not be saved')}return}
 try{const raw=localStorage.getItem(LK);if(raw){applyData(JSON.parse(raw))}else{const old=localStorage.getItem(OLDK);if(old){applyData(JSON.parse(old));localStorage.setItem(LK,JSON.stringify(payload()))}}MODE='local';loaded=true;setSV('Saved on this device');draw()}catch(e){setSV('Not saving: storage is blocked')}}
 /* ====== state ====== */
+let THEME='light';try{THEME=localStorage.getItem('sb-theme')==='dark'?'dark':'light'}catch(e){}
+function applyTheme(){document.documentElement.setAttribute('data-theme',THEME)}applyTheme();
 let V='tasks',LAY='list',TS='today',F={cat:'all',q:'',done:false,flt:'',own:''},OPEN={},ARCHOPEN=false;
 const cat=id=>C.cats.find(c=>c.id===id)||{n:'?',c:'#888780'};
 const WDF=['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
@@ -158,11 +160,11 @@ function setV(){return `<p class="mut" style="margin:0 0 10px">Everything here i
 <div class="card" style="padding:12px 14px;margin-bottom:12px"><div style="font-weight:500;margin-bottom:8px">Statuses</div>${C.sts.map((s,i)=>`<div class="set" style="grid-template-columns:1fr"><input type="text" value="${esc(s.n)}" data-a="sn" data-i="${i}"></div>`).join('')}<p class="hint">The last status counts as done.</p></div>
 <div class="card" style="padding:12px 14px;margin-bottom:12px"><div style="font-weight:500;margin-bottom:8px">Backup</div><p class="mut" style="margin:0 0 8px">Your board saves automatically (${MODE==='db'?'in your claude.ai account':MODE==='local'?'in this browser only':'not saving right now'}). To move it between places, download a backup here and import it there. Old Signal Board backups import too.</p><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button data-a="bd">Download backup</button><button data-a="bpick">Import backup file</button><button data-a="bf">Show backup text</button><button data-a="bi">Import from text box</button><span class="mut" id="bmsg"></span></div><textarea id="imp" rows="4" placeholder="Backup text appears here, or paste one to import" style="width:100%;margin-top:8px;font-family:var(--font-mono);font-size:12px;background:var(--surface-2);color:var(--text-primary);border:.5px solid var(--border-strong);border-radius:var(--radius);padding:8px"></textarea></div>
 <div class="card" style="padding:12px 14px"><div style="font-weight:500;margin-bottom:8px">Saved filters</div><p class="mut" style="margin:0 0 8px">Each filter is one line in the config. Example:</p><pre>{id:'wo', n:'WO tasks', f: t => !!t.ref}\n{id:'mine', n:'Mine', f: t => t.own === 'John'}</pre><p class="hint">Current filters: ${C.filters.map(f=>esc(f.n)).join(', ')}.</p></div>`}
-function draw(){const a=document.getElementById('app');a.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;gap:8px;flex-wrap:wrap"><span style="font-size:20px;font-weight:500">${esc(C.title)}</span><span class="mut"><span id="sv">${esc(SV)}</span> &nbsp; ${fd(TODAY)}</span></div><div class="seg">${[['tasks','Tasks'],['report','Report'],['set','Customize']].map(([k,n])=>`<button class="${V===k?'on':''}" data-a="v" data-id="${k}">${n}</button>`).join('')}</div>${V==='tasks'?tasksV():V==='report'?reportV():setV()}`}
+function draw(){const a=document.getElementById('app');a.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;gap:8px;flex-wrap:wrap"><span style="font-size:20px;font-weight:500">${esc(C.title)}</span><span class="mut"><span id="sv">${esc(SV)}</span> &nbsp; ${fd(TODAY)} &nbsp; <button class="xs" data-a="th">${THEME==='dark'?'Light mode':'Dark mode'}</button></span></div><div class="seg">${[['tasks','Tasks'],['report','Report'],['set','Customize']].map(([k,n])=>`<button class="${V===k?'on':''}" data-a="v" data-id="${k}">${n}</button>`).join('')}</div>${V==='tasks'?tasksV():V==='report'?reportV():setV()}`}
 const A=document.getElementById('app'),$=id=>document.getElementById(id),find=id=>T.find(x=>x.id===id);
 function importData(d){const m=$('bmsg');try{if(!applyData(d))throw 0;commit();$('bmsg')&&($('bmsg').textContent='Imported, board replaced')}catch(e){m&&(m.textContent='That is not a valid backup')}}
 A.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;const a=b.dataset.a,id=b.dataset.id,i=b.dataset.i;
-if(a==='v'){V=id;draw()}else if(a==='fc'){F.cat=id;draw()}else if(a==='ts'){TS=id;draw()}else if(a==='lay'){LAY=id;draw()}
+if(a==='th'){THEME=THEME==='dark'?'light':'dark';try{localStorage.setItem('sb-theme',THEME)}catch(x){}applyTheme();draw()}else if(a==='v'){V=id;draw()}else if(a==='fc'){F.cat=id;draw()}else if(a==='ts'){TS=id;draw()}else if(a==='lay'){LAY=id;draw()}
 else if(a==='fl'){F.flt=F.flt===id?'':id;draw()}else if(a==='fo'){F.own=F.own===id?'':id;draw()}
 else if(a==='sb'){OPEN[id]=!OPEN[id];draw();if(OPEN[id]){const x=document.querySelector('[data-a="sa"][data-id="'+id+'"]');x&&x.focus()}}
 else if(a==='sx'){const t=find(id);t.subs=t.subs.filter(s=>s.id!==b.dataset.s);commit()}
