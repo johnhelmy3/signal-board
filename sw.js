@@ -1,4 +1,4 @@
-var CACHE_NAME = 'signal-board-v1';
+var CACHE_NAME = 'signal-board-v2';
 var ASSETS = ['./index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', function(event){
@@ -17,14 +17,14 @@ self.addEventListener('activate', function(event){
   self.clients.claim();
 });
 
+// Network first so a new version of the page shows up on the next load; cache is the offline fallback.
 self.addEventListener('fetch', function(event){
+  if (event.request.method !== 'GET') return;
   event.respondWith(
-    caches.match(event.request).then(function(cached){
-      return cached || fetch(event.request).then(function(resp){
-        var respClone = resp.clone();
-        caches.open(CACHE_NAME).then(function(cache){ cache.put(event.request, respClone); });
-        return resp;
-      }).catch(function(){ return cached; });
-    })
+    fetch(event.request).then(function(resp){
+      var respClone = resp.clone();
+      caches.open(CACHE_NAME).then(function(cache){ cache.put(event.request, respClone); });
+      return resp;
+    }).catch(function(){ return caches.match(event.request); })
   );
 });
